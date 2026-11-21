@@ -43,6 +43,10 @@ pub(super) struct FromLink(Stream);
 
 impl FromLink {
     /// The connection of the hub's own daemon: the ACL lets only the hub's user reach it.
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "the Unix entrance refuses a peer of a different user here; the caller is shared"
+    )]
     pub(super) fn own(self) -> Option<Stream> {
         Some(self.0)
     }

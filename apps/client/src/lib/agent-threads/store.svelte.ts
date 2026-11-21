@@ -1,3 +1,5 @@
+import type { LiveThreads } from './live/live.svelte';
+import { mergedRows } from './live/rows';
 import { markSeen, needsYouCount, storedSeen, type Seen } from './state';
 import type { Thread, ThreadRow, ThreadsShell } from './thread';
 
@@ -22,12 +24,20 @@ export class ThreadsStore {
     private readonly storage: Pick<Storage, 'getItem' | 'setItem'> | null = null,
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- the clock: read once at each call, never kept
     private readonly now: () => Date = () => new Date(),
+    /** The threads that the runner of this computer drives; `null` where there is no runner. */
+    readonly live: LiveThreads | null = null,
   ) {
     if (storage !== null) this.seen = storedSeen(storage);
   }
 
+  /** The rows of the list: the driven threads, then the session files that are not one of them (THR-056). */
+  readonly allRows = $derived.by(() => (this.rows === null ? null : mergedRows(this.rows, [...(this.live?.threads.values() ?? [])])));
+
+  /** The driven thread that is open, or `null` when the open thread is a session file. */
+  readonly liveThread = $derived.by(() => (this.chosen === null ? null : (this.live?.threads.get(this.chosen) ?? null)));
+
   /** How many threads need the person (THR-057). */
-  readonly needsYou = $derived(needsYouCount(this.rows ?? [], this.readAt, this.seen));
+  readonly needsYou = $derived(needsYouCount(this.allRows ?? [], this.readAt, this.seen));
 
   /** Reads the list again; the rows on the screen stay until the new ones come. */
   async loadList(): Promise<void> {
@@ -35,17 +45,25 @@ export class ThreadsStore {
       this.rows = await this.shell.list(null);
       this.readAt = this.now();
       this.listProblem = null;
+      // The list is read only while the window is seen: the open thread is in front of the person.
+      if (this.chosen !== null) this.markSeen(this.chosen);
     } catch (reason) {
       this.listProblem = reason instanceof Error ? reason.message : 'The threads could not be read.';
     }
   }
 
+  /** The person sees the thread `id` now: a turn that ended there does not need the person (THR-055). */
+  markSeen(id: string): void {
+    this.seen = markSeen(this.storage, this.seen, id, this.now());
+  }
+
   /** Opens the thread `id`; an answer for a thread that is no longer chosen is dropped. */
   async open(id: string): Promise<void> {
     this.chosen = id;
-    this.seen = markSeen(this.storage, this.seen, id, this.now());
-    this.loadingThread = true;
+    this.markSeen(id);
     this.threadProblem = null;
+    if (this.live?.threads.has(id) === true) return;
+    this.loadingThread = true;
     try {
       const thread = await this.shell.read(id);
       if (this.chosen !== id) return;

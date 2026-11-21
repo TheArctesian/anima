@@ -1,7 +1,7 @@
 //! Windows client entry point (WIN1). Unix host installation and build commands are not registered.
 use crate::{
-    builder, cloud, command_line, daemon, hub_listener, keystore, link, local_hub, mcp_agents,
-    mcp_permissions, process_log, stay_awake, system_browser, this_machine, web_view,
+    agent_threads, builder, cloud, command_line, daemon, hub_listener, keystore, link, local_hub,
+    mcp_agents, mcp_permissions, process_log, stay_awake, system_browser, this_machine, web_view,
 };
 use std::sync::Arc;
 use tauri::Manager;
@@ -83,6 +83,8 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         command_line::command_line_read,
         command_line::command_line_install,
         command_line::command_line_remove,
+        agent_threads::agent_threads_list,
+        agent_threads::agent_thread_read,
         mcp_agents::mcp_agents_read,
         mcp_agents::mcp_agents_change,
         mcp_permissions::mcp_permissions_read,
@@ -103,6 +105,7 @@ fn commands() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
         link::link_join,
         link::link_status,
         link::link_leave,
+        link::open_ports::link_ports,
         hub_listener::hub_listener_check,
         web_view::commands::web_view_pinning,
         web_view::commands::web_view_open,

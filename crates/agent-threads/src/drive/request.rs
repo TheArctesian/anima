@@ -31,7 +31,7 @@ impl ProgramRequestId {
 }
 
 /// What a request asks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RequestKind {
     /// May the program run a command.
@@ -45,7 +45,7 @@ pub enum RequestKind {
 }
 
 /// One question of an agent, with its choices.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Question {
     /// The key of the answer: the text of the question (Claude Code) or its `id` (Codex).
     pub key: String,
@@ -57,7 +57,7 @@ pub struct Question {
 
 /// A request of the program, as the program made it (THR-032: the view shows what the request
 /// names, from the request itself).
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Request {
     pub id: ProgramRequestId,
     pub kind: RequestKind,
@@ -124,4 +124,45 @@ impl Answer {
             _ => Ok(()),
         }
     }
+}
+
+/// `text` without the characters that hide or reorder what the person reads: the controls but
+/// the new line and the tab, and the marks that hide or reorder text (THR-125).
+#[must_use]
+pub(super) fn visible(text: &str) -> String {
+    text.chars()
+        .filter(|&c| {
+            let hidden = c.is_control() && c != '\n' && c != '\t';
+            !hidden && !crate::marks::is_hidden_mark(c)
+        })
+        .collect()
+}
+
+/// The change that a file tool of Claude Code asks for, as lines of `-` and `+`.
+#[must_use]
+pub(super) fn claude_diff(tool: &str, input: &serde_json::Value) -> Option<String> {
+    let pair = |old: &serde_json::Value, new: &serde_json::Value| {
+        let mut lines: Vec<String> = super::text_of(old)
+            .lines()
+            .map(|line| format!("- {line}"))
+            .collect();
+        lines.extend(super::text_of(new).lines().map(|line| format!("+ {line}")));
+        lines.join("\n")
+    };
+    let text = match tool {
+        "Write" => pair(&serde_json::Value::Null, &input["content"]),
+        "Edit" if input["replace_all"] == true => format!(
+            "{}\n(each place in the file)",
+            pair(&input["old_string"], &input["new_string"])
+        ),
+        "Edit" => pair(&input["old_string"], &input["new_string"]),
+        "MultiEdit" => input["edits"]
+            .as_array()?
+            .iter()
+            .map(|edit| pair(&edit["old_string"], &edit["new_string"]))
+            .collect::<Vec<_>>()
+            .join("\n…\n"),
+        _ => return None,
+    };
+    Some(visible(&text))
 }
