@@ -13,6 +13,7 @@ pub mod enrolment;
 pub mod link_socket;
 #[cfg(windows)]
 mod windows;
+pub mod work;
 
 use std::path::Path;
 use std::time::Duration;

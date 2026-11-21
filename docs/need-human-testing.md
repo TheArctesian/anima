@@ -39,6 +39,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-005 | The tool inventory of a daemon that runs as a system unit | A Linux computer | Open |
 | HT-006 | The probes of `claude` and `codex` leave the account alone | A computer with the two programs | Open |
 | HT-NEW-l1hardware | The hardware values of the Mac and of the Linux PC `pop-os` agree with what each system shows | A hub and a daemon of this build on both computers | Open |
+| HT-NEW-l1daemonwork | The model work of the daemon installs `llama-server`, starts it on loopback, supervises it and stops it on the Mac and on `pop-os` | A test hub that gives model items, and a daemon of this build in a test folder on both computers | Open |
 | HT-007 | The pinned Rust version on the Linux computer | The Linux development computer | Open |
 | HT-008 | A macOS release build with the pinned Rust version | A Mac builder | Open |
 | HT-010 | Merge a pull request, and a set of pull requests, on GitHub | A GitHub repository that is safe to change, GitHub on the hosted hub, and a sign-in of the command line (OD-25) | Open |
@@ -224,6 +225,48 @@ Needs HT-002.
 2. Ask the client to call `anima_capability_list`. Expected: the same devices and tools as
    `anima capability list`.
 3. Call it with `tool` set to `cargo`. Expected: the same devices as step 5 of HT-002.
+
+Result: Open.
+
+### HT-NEW-l1daemonwork: the model work of the daemon on the Mac and on `pop-os`
+
+Built: `crates/daemon-core/src/model_work/` (the checks of the ten model work types, the causes, the
+flag policy, the files of a copy, the settings at the machine and the actor check, the release
+sources, the command line and the environment, the waits of a restart, the loopback verdict, the
+folders) and `crates/daemon/src/model/` (the claim and the report through the work route,
+`runtime_install`, `server_start`, `server_stop`, the supervision, `model_report`), task L1-6 of
+the compute plan (CAG-001 to CAG-009, RTC-002 to RTC-006, SEC-C-001, SEC-C-007, SEC-C-008). The
+contract is `contracts/compute/model-work.md` version 0.3, which waits for R-NEW-modelwork and the
+security review SEC-C-012. The tests use a scripted hub and a scripted runtime (a Perl program);
+no test downloads a real release or starts a real `llama-server`. The claim loop is not yet
+started by the running daemon: the switch at the machine (USE-004) does not exist in the daemon.
+Thus this check needs a small test program or a test build that calls `model::cycle::Node::cycle`.
+
+Do not use the installed daemon of the operator. Set `ANIMA_DAEMON_HOME` to a new test folder.
+
+1. On each computer, write `model-sources.json` in the test folder with one entry for the
+   `llama-server` release of that computer (the `.tar.gz` of the upstream release, its SHA-256 and
+   size, and the path of `llama-server` in it). Give a `runtime_install` item from the test hub.
+   Expected: the report is `succeeded`; `<home>/runtimes/llama_server/<version>-<backend>/` holds
+   the files, with mode 0755 for folders and programs and 0644 for each other file, and no link.
+   If the upstream release of that computer is a `.zip`, write the result: the unpack takes only a
+   `.tar.gz`.
+2. Give a `runtime_install` item with a wrong SHA-256 in `model-sources.json`. Expected: `failed`
+   with `checksum`, and no new folder.
+3. Give a `server_start` item. Expected: `succeeded`. `lsof -nP -iTCP -sTCP:LISTEN` (Mac) or
+   `ss -ltnp` (`pop-os`) shows `llama-server` on `127.0.0.1` and a port from 41000 to 41999 only.
+   `ps eww <pid>` shows only the environment of Section 2.1 of the contract. The output ring
+   `<home>/model-state/servers/<server>/output.log` has mode 0600 and at most 1 MiB. Write in the
+   result whether this release of `llama-server` takes `--verbosity 0`, `--no-slots` and the router
+   mode with no model; if it does not start, write its first error line from the ring.
+4. End the `llama-server` process with `kill -9`. Expected: within 15 seconds of the next cycle the
+   daemon starts it again after the waits 1, 2, 4, 8 seconds; after 5 ends in one hour it stays
+   `failed` in `model_report`.
+5. Give a `server_stop` item. Expected: `succeeded`; no `llama-server` process is left.
+6. Write `{"sandbox": true}` in `<home>/model-work.json` and give a `server_start` item. Expected:
+   `failed` with `isolation_failed` (the isolation is not built).
+7. Write `{"agentTypes": ["model_report"]}` and give a `server_start` item with `actor` `Agent`.
+   Expected: `refused` with `actor_not_permitted`.
 
 Result: Open.
 

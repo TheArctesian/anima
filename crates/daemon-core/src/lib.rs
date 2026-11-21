@@ -5,6 +5,7 @@
 pub mod agent_usage;
 pub mod hardware;
 pub mod inventory;
+pub mod model_work;
 pub mod points;
 pub mod readings;
 pub mod wire;

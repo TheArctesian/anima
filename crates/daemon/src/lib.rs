@@ -12,6 +12,8 @@ pub mod cli;
 pub mod config;
 pub mod hub;
 pub mod keys;
+#[cfg(unix)]
+pub mod model;
 pub mod push;
 pub mod readers;
 pub mod report;

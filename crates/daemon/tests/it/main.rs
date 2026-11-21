@@ -11,6 +11,8 @@ mod fake_hub;
 mod kit;
 #[cfg(target_os = "linux")]
 mod log;
+#[cfg(unix)]
+mod model_work;
 #[cfg(target_os = "linux")]
 mod push;
 #[cfg(target_os = "linux")]

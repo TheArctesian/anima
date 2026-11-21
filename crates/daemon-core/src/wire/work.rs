@@ -22,8 +22,71 @@ pub const MAX_LOG_PART_BYTES: usize = 64 * 1024;
 pub enum WorkType {
     Build,
     Runner,
+    /// The model work types (`contracts/compute/model-work.md` Section 2; waits for
+    /// R-NEW-modelwork). Each has the kind [`WorkKind::Model`].
+    ModelReport,
+    RuntimeInstall,
+    ModelPull,
+    CopyDelete,
+    ServerStart,
+    ServerStop,
+    ModelLoad,
+    ModelUnload,
+    ModelMeasure,
+    ModelDrain,
     #[serde(other)]
     Unknown,
+}
+
+/// The ten model work types, in the order of the table of the model work contract.
+pub const MODEL_TYPES: [WorkType; 10] = [
+    WorkType::ModelReport,
+    WorkType::RuntimeInstall,
+    WorkType::ModelPull,
+    WorkType::CopyDelete,
+    WorkType::ServerStart,
+    WorkType::ServerStop,
+    WorkType::ModelLoad,
+    WorkType::ModelUnload,
+    WorkType::ModelMeasure,
+    WorkType::ModelDrain,
+];
+
+impl WorkType {
+    /// The type as the bodies spell it.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Build => "build",
+            Self::Runner => "runner",
+            Self::ModelReport => "model_report",
+            Self::RuntimeInstall => "runtime_install",
+            Self::ModelPull => "model_pull",
+            Self::CopyDelete => "copy_delete",
+            Self::ServerStart => "server_start",
+            Self::ServerStop => "server_stop",
+            Self::ModelLoad => "model_load",
+            Self::ModelUnload => "model_unload",
+            Self::ModelMeasure => "model_measure",
+            Self::ModelDrain => "model_drain",
+            Self::Unknown => "unknown",
+        }
+    }
+
+    /// The type that `text` spells, when it is of the fixed list.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        [Self::Build, Self::Runner]
+            .into_iter()
+            .chain(MODEL_TYPES)
+            .find(|kind| kind.as_str() == text)
+    }
+
+    /// Whether the type is one of the model work.
+    #[must_use]
+    pub fn is_model(self) -> bool {
+        MODEL_TYPES.contains(&self)
+    }
 }
 
 /// How a job is isolated on its machine (K10 Section 3).
@@ -32,6 +95,8 @@ pub enum WorkType {
 pub enum WorkKind {
     Container,
     Native,
+    /// The daemon does the steps itself; no job code runs (model work, Section 1).
+    Model,
     #[serde(other)]
     Unknown,
 }
