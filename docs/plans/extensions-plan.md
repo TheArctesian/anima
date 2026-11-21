@@ -913,11 +913,11 @@ collector exist. Counts have no text, so they are Class C and need no vault.
   the last use, and the prompts, tool calls, tokens and estimate (AIS-021) of the days asked for. It
   gives at most 200 sessions in one answer and counts the rest. The command is
   `anima agents sessions` and the MCP tool is `anima_agents_sessions` (CMD-030); the page shows them
-  in a part "Sessions". Not approved by the operator: made overnight (R-NEW-agentsessions).
+  in a part "Sessions". Not approved by the operator: made overnight (R-314).
 - **AIS-026.** A session whose last use is at most 30 minutes before the clock of the hub is
   "recent". The daemon counts every 15 minutes, so the page and the command must not say that a
   session runs now: they say "Used in the last 30 minutes". Not approved by the operator: made
-  overnight (R-NEW-agentsessions).
+  overnight (R-314).
 
 Not built, from the dashed box of the mockup agent-usage-v2: the hours of a day (the counts are by
 day; the daemon must count by hour, a change of K8), and the limit of a subscription (AIS-022 forbids it).
