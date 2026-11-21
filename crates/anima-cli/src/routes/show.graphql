@@ -1,0 +1,23 @@
+# `anima route show`: one public name with its state.
+query RouteShow($id: ID!) {
+  applicationRoute(id: $id) {
+    id
+    name
+    applicationId
+    deviceId
+    port
+    proof
+    failedReads
+    proofRecordName
+    proofRecordValue
+    machineConsent
+    certificateNotAfter
+    waitsFor
+    checkedAt
+    requests
+    bytesIn
+    bytesOut
+    refused
+    createdAt
+  }
+}

@@ -1,0 +1,23 @@
+# `anima route list`: the public names of one application, or of each.
+query RouteList($applicationId: ID) {
+  applicationRoutes(applicationId: $applicationId) {
+    id
+    name
+    applicationId
+    deviceId
+    port
+    proof
+    failedReads
+    proofRecordName
+    proofRecordValue
+    machineConsent
+    certificateNotAfter
+    waitsFor
+    checkedAt
+    requests
+    bytesIn
+    bytesOut
+    refused
+    createdAt
+  }
+}

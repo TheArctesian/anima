@@ -1,0 +1,4 @@
+# `anima route remove`: the hub returns the removed ID.
+mutation RouteRemove($id: ID!) {
+  removeApplicationRoute(id: $id)
+}

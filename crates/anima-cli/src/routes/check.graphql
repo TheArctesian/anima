@@ -1,0 +1,23 @@
+# `anima route check`: reads the proof of the name once.
+mutation RouteCheck($id: ID!) {
+  checkApplicationRoute(id: $id) {
+    id
+    name
+    applicationId
+    deviceId
+    port
+    proof
+    failedReads
+    proofRecordName
+    proofRecordValue
+    machineConsent
+    certificateNotAfter
+    waitsFor
+    checkedAt
+    requests
+    bytesIn
+    bytesOut
+    refused
+    createdAt
+  }
+}

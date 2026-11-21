@@ -162,6 +162,7 @@ read key; change commands with a write key).
 | `builder` | `list`, `enrol` L, `revoke` L |
 | `vpn` | `status` (`--watch`), `invite` L, `router-key` L, `register` L, `renew` L, `approve-route` L |
 | `timeline` | `list` (`--from`, `--to`, `--category`, `--limit`, `--after`, `--all`; the last 24 hours when no time is given) (K-E3; TML-007) |
+| `route` | `list` (`--application <id>`), `show <id>`, `add` L, `check` L, `remove` L: the public names of the applications (hosted-applications plan, H21, Section 12) |
 | `record-link` | `list <record>`, `add <source> <target> --kind <kind>` (`--label`), `remove <id>`; a record is `kind:id` (K-E4; RLK-001, RLK-002, RLK-004). The noun `link` is the device link of S6 |
 | `file` | `list <record>`, `upload <path> --owner <record>` (`--name`, `--key`, default `engine`, `--archive <id>`, `--keep-location`, `--type <media type>`), `download <id> --output <path>` (a new file only; never to a terminal), `remove <id>` (confirms), `archive add --owner <record> --name <name>`, `archive remove <id>` (confirms: it deletes the records that came from the archive) (K-E4 Section 9; FIL-001 to FIL-005). The bytes go through `/files/v1`, not through GraphQL |
 | `extraction` | `list` (`--owner`, `--state proposed\|confirmed\|rejected`), `propose --owner --form --extension --origin client\|hub --fields <JSON>` (`--attachment <id>`), `confirm <id> --fields <JSON>`, `reject <id>` (K-E4 Section 10; VIS-001 to VIS-004) |
@@ -395,7 +396,7 @@ Every tool is `allow` by default (MCP-002, MCP-024, R-120). The switch of MCP-02
 | `events` | `anima_events_search`, `anima_audit_list`, `anima_audit_verify` (R-138) | |
 | `sessions` | `anima_sessions_list` | `anima_session_end` |
 | `notifications` | `anima_notifications_overview` (channels with no addresses, settings, deliveries) | `anima_notification_send_test`, `anima_check_set_notifications` |
-| `web` | (in `anima_device_get`) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete` |
+| `web` | (in `anima_device_get`), `anima_route_list`, `anima_route_get` (a public name with its proof and state; never its certificate or key) | `anima_web_interface_create`, `anima_web_interface_update`, `anima_web_interface_delete`. `addApplicationRoute`, `checkApplicationRoute` and `removeApplicationRoute` have no tool: publishing a name to the internet is a trust decision (MCP-005), and the hub refuses every API key and asks for a second factor (hosted-applications plan, Section 12, SF-NEW-routepublish) |
 | `releases` | `anima_releases_list`, `anima_release_publishing` (PRO-037), `anima_build_log` | `anima_release_create` L, `anima_build_cancel` L |
 | `vpn` | `anima_vpn_status` | `anima_vpn_approve_route` L |
 | `retention` | `anima_retention_list` | `anima_retention_set` L |

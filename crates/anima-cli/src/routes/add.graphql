@@ -1,0 +1,26 @@
+# `anima route add`: a login or browser token only, with a second factor on the account.
+mutation RouteAdd($input: ApplicationRouteInput!) {
+  addApplicationRoute(input: $input) {
+    sameSiteAsHub
+    route {
+    id
+    name
+    applicationId
+    deviceId
+    port
+    proof
+    failedReads
+    proofRecordName
+    proofRecordValue
+    machineConsent
+    certificateNotAfter
+    waitsFor
+    checkedAt
+    requests
+    bytesIn
+    bytesOut
+    refused
+    createdAt
+    }
+  }
+}

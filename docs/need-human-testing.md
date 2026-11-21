@@ -32,6 +32,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | --- | --- | --- | --- |
 | HT-074 | Windows desktop account, link and remote sessions (WIN1) | Windows 11 VM, Anima account and a hub | Open |
 | HT-069 | Anima OS preview on spare hardware and private hub enrollment | A disposable UEFI PC, selected empty disk and an owner-controlled hub | Open |
+| HT-NEW-routeproxy | The public names of applications through the route proxy, on a real network (task H21) | A hub that a person hosts with ports 80 and 443 open, a domain name with its DNS, a machine on the link with a web application, and a second hub | Open |
 | HT-001 | `anima snapshot` against GitHub | A GitHub repository and a second computer | Open |
 | HT-002 | The tool inventory from a daemon to the command line | A hub and a daemon of this build | Open |
 | HT-003 | The tool inventory in an MCP client | HT-002 | Open |
@@ -1929,6 +1930,42 @@ It needs: the computer `pop-os`, a terminal as your own user (not root), the int
 
 After the check you can remove everything again: `podman system reset` removes the images and the
 containers of your user, and `sudo apt remove podman` removes the program.
+
+### HT-NEW-routeproxy: the public names of applications through the route proxy (task H21)
+
+Built on the branch `hosted/apps-h21`: the routes domain of the hub (`crates/hub/src/work/routes/`), the
+interface of the proxy on a Unix socket (`crates/hub/src/work/routes/door.rs`), the proxy program
+(`crates/route-proxy/`), the command `anima route` and the MCP tools `anima_route_list` and
+`anima_route_get`. The tests use a fake DNS, a fake certificate issuer, a fake machine and a test
+database. They prove each refused name, port and target, the proof by a TXT record, the CAA check, the
+sealed key, the connection by the identifier of an application only, the limit of streams of a link, and
+the rewrite of the headers. No test used a real resolver, a real certificate, a real port 443, the user
+of the operating system of the proxy, or the link to a real machine. The real ACME issuer is not built:
+it answers "not configured", so no route serves on a real hub yet. The consent of the machine
+(OD-HOST-43) is a field that stays "not given".
+
+1. Before the issuer is built: on a hub that a person hosts, set `ANIMA_ROUTES_SOCKET` and start the hub.
+   Run `anima route add` with a name of a domain that you own, an application identifier, a machine on
+   the link and its port. Expected: the command asks for the second factor, then shows the TXT record
+   `_anima.<name>` with a token of 64 hexadecimal characters.
+2. Put the TXT record in the DNS of the name and run `anima route check <id>`. Expected: the proof is
+   "Proven". The state waits for the consent of the machine and for a certificate.
+3. Run `anima route add` with a name of the domain of the hub, a name with `*`, and port 22. Expected:
+   each one is refused with its reason.
+4. Start `anima-route-proxy` as a user of the operating system that is not the user of the hub, with
+   `ANIMA_ROUTE_PROXY_LISTEN` unset. Expected: it says that it is off and stops.
+5. As that user, try to open the dial socket of the link, the control socket of the link, the port of
+   the hub and the database. Expected: each one is refused by the permissions of the operating system;
+   only the socket of `ANIMA_ROUTES_SOCKET` opens.
+6. When the issuer and the consent are built: set `ANIMA_ROUTE_PROXY_LISTEN` to port 443 and
+   `ANIMA_ROUTE_PROXY_LISTEN_PLAIN` to port 80, and open `https://<name>/` from a second network.
+   Expected: the page of the application, with a valid certificate. `http://<name>/` goes to https.
+   A request with a `Host` that is not the name gets 421. The application gets no cookie of the hub
+   and an `X-Forwarded-For` with the address of your client.
+7. On a second hub, run `anima route add` with the same name. Expected: the TXT record of the first hub
+   does not prove the name for the second hub.
+
+Result: Open.
 
 ## Not built yet
 
