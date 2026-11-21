@@ -71,6 +71,7 @@ jobs:
       rust: ${{ steps.jobs.outputs.rust }}
       go: ${{ steps.jobs.outputs.go }}
       documents_only: ${{ steps.jobs.outputs.documents_only }}
+      rust_crates: ${{ steps.jobs.outputs.rust_crates }}
       proved: ${{ steps.jobs.outputs.proved }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -173,11 +174,17 @@ jobs:
           shared-key: gates-lint
           # Only the workflow rust-cache writes these caches, under `main`, which each branch can read.
           save-if: false
+      # A branch that changed only tests of some crates (`rust_crates`, quality/src/gates/test-only.ts)
+      # lints only those crates and checks no crate alone; the train runs each gate.
       - name: Run the gates fmt and clippy
+        env:
+          GATES_RUST_CRATES: ${{ needs.base.outputs.rust_crates }}
         run: bun quality/bin/gates.ts --group rust --gate fmt,clippy
       # The workspace turns on the union of the features of its crates; the release builds `anima`
       # and the application alone, so each crate must build alone (anima-cli at 6364bb038).
       - name: Check each crate alone
+        env:
+          GATES_RUST_CRATES: ${{ needs.base.outputs.rust_crates }}
         run: bun quality/bin/gates.ts --alone
 
   # Clippy of the workspace for Windows, on Linux (quality/src/gates/windows-lint.ts): the code behind
@@ -245,7 +252,10 @@ jobs:
           # Only the workflow rust-cache writes these caches, under `main`, which each branch can read.
           save-if: false
       # The pinning test of the desktop shell starts the event loop of Tauri, which needs a display.
+      # A branch that changed only tests of some crates tests only those crates (see rust-lint).
       - name: Run the gates rust-test, doctest and pinning
+        env:
+          GATES_RUST_CRATES: ${{ needs.base.outputs.rust_crates }}
         run: |
           set -eu
           unset DATABASE_URL

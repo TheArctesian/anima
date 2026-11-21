@@ -1,11 +1,13 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { checkAlone } from "../src/gates/alone.ts";
 import { cpus, loadavg } from "node:os";
 import { compileCache } from "../src/gates/cache.ts";
 import { formatGateEvent, gateList, GROUPS, keptGoing, missingRequirement, ofGroups, runGates, type Gate, type Group } from "../src/gates/gates.ts";
 import { changedGates } from "../src/gates/changed.ts";
 import { devPushJobs, EACH_JOB, jobLines, jobsFor } from "../src/gates/jobs.ts";
-import { changedPaths, readLayout } from "../src/gates/layout.ts";
+import { changedPaths, cratesHolding, readLayout } from "../src/gates/layout.ts";
+import { crateGates, testOwner } from "../src/gates/test-only.ts";
 import { choose, describeChoice, fastGates, isBusy, macOnly } from "../src/gates/tier.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 import { LEFT_OUT, windowsLintArgv } from "../src/gates/windows-lint.ts";
@@ -31,11 +33,18 @@ function groupsAsked(): Group[] | undefined {
   return asked as Group[];
 }
 
+/** The crates that the job `base` named because the branch changed only their tests (`--jobs`). */
+const rustCrates = (process.env["GATES_RUST_CRATES"] ?? "").split(",").filter((crate) => crate !== "");
+
 // `--alone`: each crate checked by itself (the job rust-lint on GitHub); it runs no gate of the list.
 if (process.argv[2] === "--alone") {
   if (process.argv.length > 3) {
     console.error("gates: --alone takes no other argument (usage: bun quality/bin/gates.ts --alone)");
     process.exit(2);
+  }
+  if (rustCrates.length > 0) {
+    console.log(`alone: the branch changed only tests of ${rustCrates.join(", ")}, which no crate builds alone; nothing to check`);
+    process.exit(0);
   }
   const crates = readLayout(REPO_ROOT).crates.map((crate) => crate.name);
   const run = (argv: string[]) => Bun.spawnSync(argv, { cwd: REPO_ROOT, stdout: "inherit", stderr: "inherit" }).exitCode ?? 1;
@@ -55,7 +64,12 @@ if (process.argv[2] === "--windows-lint") {
 // `$GITHUB_OUTPUT` (the job `base`). With no base here it names each job.
 if (process.argv[2] === "--jobs") {
   const paths = changedPaths(REPO_ROOT, process.env["FAST_BASE"] || "origin/dev");
-  for (const line of jobLines(paths === undefined ? EACH_JOB : jobsFor(paths))) console.log(line);
+  const read = (path: string) => (existsSync(join(REPO_ROOT, path)) ? readFileSync(join(REPO_ROOT, path), "utf8") : undefined);
+  const crates = paths === undefined ? [] : cratesHolding(REPO_ROOT, paths);
+  const changed = new Set(paths);
+  const jobs = paths === undefined ? EACH_JOB : jobsFor(paths, (path) => testOwner(path, crates, read, changed));
+  if (jobs.rustCrates !== undefined) console.error(`jobs: each Rust change is a test of ${jobs.rustCrates.join(", ")}; the Rust jobs take only these crates`);
+  for (const line of jobLines(jobs)) console.log(line);
   process.exit(0);
 }
 
@@ -165,7 +179,9 @@ if (missingName !== undefined) {
   console.error(`gates: no such gate: ${missingName}\n${USAGE}`);
   process.exit(2);
 }
-const chosen = named === undefined ? grouped : grouped.filter((gate) => named.includes(gate.name));
+const picked = named === undefined ? grouped : grouped.filter((gate) => named.includes(gate.name));
+if (rustCrates.length > 0) console.log(`gates: the branch changed only tests of ${rustCrates.join(", ")}: Clippy and nextest of these crates, no doctest; the train runs each gate`);
+const chosen = rustCrates.length > 0 ? crateGates(picked, rustCrates) : picked;
 // `--keep-going`: a proof run (the Windows job started by hand) shows each failure in one run.
 const keepGoing = process.argv.includes("--keep-going");
 if (keepGoing) console.log("gates: --keep-going: each gate runs after a failure; the failures are listed at the end. Not for a merge");
