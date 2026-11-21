@@ -4,6 +4,7 @@
   import type { DeviceCheck } from '$lib/checks/api';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import WebMenu from '$lib/devices/actions/WebMenu.svelte';
+  import CopyAddress from '$lib/devices/address/CopyAddress.svelte';
   import { webInterfacesOf } from '$lib/devices/actions/actions';
   import type { DeviceDetail } from '$lib/devices/api';
   import ScreenSharingButton from '$lib/devices/screen-sharing/ScreenSharingButton.svelte';
@@ -64,7 +65,7 @@
       <StatusBadge status={device.status} deviceId={device.id} />
       <WarningBadge warnings={device.accessWarnings} />
     </span>
-    <span class="mono">{device.host}</span>
+    <CopyAddress host={device.host} />
     {#if line?.ip != null}<span class="mono">{line.ip}</span>{/if}
   {/if}
 {/snippet}
