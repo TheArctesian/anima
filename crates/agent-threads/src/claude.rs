@@ -2,8 +2,9 @@
 //! `user` line holds a prompt or the results of tool calls; an `assistant` line holds one block
 //! of a reply (text, thinking or a tool call); `custom-title` and `summary` lines name it. A
 //! line of a sub-agent (`isSidechain`) and a line the program wrote for itself (`isMeta`) are
-//! not a part of the thread. Claude Code writes no line for the end of a turn, so a thread of
-//! it has no [`EntryKind::TurnEnd`].
+//! not a part of the thread. A turn ends at an `assistant` line whose `stop_reason` is `end_turn`
+//! or `stop_sequence`, and it is stopped at the note that Claude Code writes in the turn of the
+//! person when the person interrupts.
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -30,6 +31,7 @@ struct Line {
 #[derive(Deserialize)]
 struct Message {
     model: Option<String>,
+    stop_reason: Option<String>,
     content: Option<Value>,
 }
 
@@ -68,6 +70,12 @@ pub(super) fn read(reader: &mut ThreadReader, line: &[u8]) {
         Some("assistant") => {
             reader.model(message.model.as_deref());
             assistant(reader, at, message.content.as_ref());
+            if matches!(
+                message.stop_reason.as_deref(),
+                Some("end_turn" | "stop_sequence")
+            ) {
+                reader.end(at, false);
+            }
         }
         _ => {}
     }
@@ -76,6 +84,7 @@ pub(super) fn read(reader: &mut ThreadReader, line: &[u8]) {
 /// A prompt the person typed, or the results of tool calls.
 fn user(reader: &mut ThreadReader, at: Option<super::Time>, content: Option<&Value>) {
     match content {
+        Some(Value::String(text)) if interrupted(text) => reader.end(at, true),
         Some(Value::String(text)) if typed(text) => reader.prompt(at, text, 0),
         Some(Value::Array(blocks)) => {
             let mut text = Vec::new();
@@ -89,7 +98,9 @@ fn user(reader: &mut ThreadReader, at: Option<super::Time>, content: Option<&Val
                 }
             }
             let text = text.join("\n");
-            if typed(&text) || (text.is_empty() && images > 0) {
+            if interrupted(&text) {
+                reader.end(at, true);
+            } else if typed(&text) || (text.is_empty() && images > 0) {
                 reader.prompt(at, &text, images);
             }
         }
@@ -104,6 +115,12 @@ fn typed(text: &str) -> bool {
     let text = text.trim_start();
     !text.is_empty()
         && (!text.starts_with('<') || TYPED_TAGS.iter().any(|tag| text.starts_with(tag)))
+}
+
+/// The note Claude Code writes in the turn of the person when the person interrupts.
+fn interrupted(text: &str) -> bool {
+    text.trim_start()
+        .starts_with("[Request interrupted by user")
 }
 
 fn result(reader: &mut ThreadReader, block: &Value) {

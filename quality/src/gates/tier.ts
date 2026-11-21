@@ -4,6 +4,8 @@ import type { Gate } from "./gates.ts";
 export interface Member {
   folder: string;
   name: string;
+  /** The names of the other members of the workspace that this one depends on. */
+  uses?: string[];
 }
 
 /** The packages of the repository, as `cargo metadata` and the workspaces of `package.json` give them. */
@@ -32,6 +34,28 @@ const GO_MODULE = "link/";
 /** The tests of the deploy package read the workflow files. */
 const WORKFLOWS = ".github/";
 const WORKFLOW_TESTS = "@anima/deploy";
+
+/**
+ * The quick tests of the deploy package that read the Rust workspace (its manifests, the folders
+ * below `crates/`, the toolchain): a change of a crate can fail them with no file of `deploy/`
+ * changed. Together they take seconds; `release-decision.test.ts` also reads the workspace but takes
+ * a minute, so the run on GitHub keeps it.
+ */
+const WORKSPACE_MAPS = [
+  "deploy/test/release-applications.test.ts",
+  "deploy/test/release-gates.test.ts",
+  "deploy/test/cli-release.test.ts",
+  "deploy/test/compose.test.ts",
+  "deploy/test/compose-hub.test.ts",
+];
+
+/** The gate of `WORKSPACE_MAPS` when a Rust package is touched, unless the tests of the deploy package already run. */
+export function workspaceMaps(rust: Touched, deployTested: boolean): Gate[] {
+  if ((rust !== "all" && rust.length === 0) || deployTested) return [];
+  return [{ name: "deploy-maps", group: "bun", argv: ["bun", "test", "--timeout", "30000", ...WORKSPACE_MAPS] }];
+}
+
+const testsDeploy = (bun: Touched) => bun === "all" || bun.includes(WORKFLOW_TESTS);
 
 /** Files of the root that no build and no test reads. */
 const NEUTRAL = [".gitattributes", "LICENSE"];
@@ -196,7 +220,15 @@ function busyGates(choice: Extract<Choice, { tier: "code" }>, full: Gate[], busy
   const light = (gates: Gate[]) => gates.filter((gate) => !BROAD.includes(gate.name));
   const rust = choice.rust === "all" ? light(rustGates(full, "all")) : rustGates(full, choice.rust);
   const bun = choice.bun === "all" ? light(bunGates(full, "all")) : [...light(bunGates(full, choice.bun)), ...narrowBunTests(choice.bun, busy.paths, busy.packages)];
-  return [...rust, ...(choice.go ? full.filter((gate) => gate.group === "go") : []), ...bun, ...full.filter((gate) => gate.group === "quality")];
+  // A busy machine runs each deploy test only for a named deploy package with no changed test file (`narrowBunTests`).
+  const deployWhole = choice.bun !== "all" && choice.bun.includes(WORKFLOW_TESTS) && !busy.paths.some((path) => path.startsWith("deploy/") && TEST_FILE.test(path));
+  return [
+    ...rust,
+    ...(choice.go ? full.filter((gate) => gate.group === "go") : []),
+    ...bun,
+    ...workspaceMaps(choice.rust, deployWhole),
+    ...full.filter((gate) => gate.group === "quality"),
+  ];
 }
 
 /** What the fast tier needs to know to leave tests out on a busy machine: the changed paths and the bun packages. */
@@ -225,6 +257,7 @@ export function fastGates(choice: Choice, full: Gate[], busy?: Busy): Gate[] {
         ...rustGates(full, choice.rust),
         ...(choice.go ? full.filter((gate) => gate.group === "go") : []),
         ...bunGates(full, choice.bun),
+        ...workspaceMaps(choice.rust, testsDeploy(choice.bun)),
         ...full.filter((gate) => gate.group === "quality"),
       ];
   }

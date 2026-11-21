@@ -7,6 +7,7 @@
   "scripts": {
     "gates": "bun quality/bin/gates.ts",
     "gates:fast": "bun quality/bin/gates.ts --fast",
+    "gates:changed": "bun quality/bin/gates.ts --changed",
     "lint": "bun run --filter '*' lint",
     "check": "bun run --filter '*' check",
     "test": "bun run --filter '*' test",

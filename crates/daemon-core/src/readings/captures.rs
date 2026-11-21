@@ -66,6 +66,26 @@ devfs                  215       215         0   100%    /dev\n\
 /dev/disk3s5     500000000 250000000 200000000    56%    /System/Volumes/Data\n\
 map auto_home            0         0         0   100%    /System/Volumes/Data/home\n";
 
+/// `df -P -k` of a Mac with one internal drive (container `disk3` with the system, data,
+/// recovery and `/nix` volumes, and the small container `disk1` of the system's boot files),
+/// an iOS app's wrapper, a simulator runtime, an external drive (`disk4`) and a network share.
+pub const DF_MACOS_APFS: &[u8] =
+    b"Filesystem     1024-blocks      Used Available Capacity  Mounted on\n\
+/dev/disk3s1s1  1948404040   13484216   89763340    14%    /\n\
+devfs                  206        206          0   100%    /dev\n\
+/dev/disk3s6    1948404040   14680344   89763340    15%    /System/Volumes/VM\n\
+/dev/disk3s2    1948404040   11438788   89763340    12%    /System/Volumes/Preboot\n\
+/dev/disk1s2        563200       6164     543544     2%    /System/Volumes/xarts\n\
+/dev/disk1s1        563200       6096     543544     2%    /System/Volumes/iSCPreboot\n\
+/dev/disk3s5    1948404040 1816109752   89763340    96%    /System/Volumes/Data\n\
+map auto_home            0          0          0   100%    /System/Volumes/Data/home\n\
+/dev/disk3s7    1948404040     581284   89763340     1%    /nix\n\
+/Applications/Audible.app/Wrapper 1948404040 918595276 999850472 48% /private/var/folders/pv/abc/X/D97CCA3F\n\
+/dev/disk3s3    1948404040    1969820   89763340     3%    /Volumes/Recovery\n\
+/dev/disk7s1      18124800   17586672     491796    98%    /private/var/run/com.apple.security.cryptexd/mnt/runtime\n\
+/dev/disk4s1     976762584  488381292  488381292    50%    /Volumes/Archive\n\
+//user@nas/share 3907029168 1953514584 1953514584    50%    /Volumes/share\n";
+
 pub const NETSTAT: &[u8] = b"Name       Mtu   Network       Address            Ipkts Ierrs     Ibytes    Opkts Oerrs     Obytes  Coll\n\
 lo0        16384 <Link#1>                        100000     0   50000000   100000     0   50000000     0\n\
 lo0        16384 127           127.0.0.1         100000     -   50000000   100000     -   50000000     -\n\

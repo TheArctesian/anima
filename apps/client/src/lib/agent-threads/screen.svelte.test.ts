@@ -13,7 +13,7 @@ vi.mock('motion', async (importOriginal) => ({
 }));
 
 const NOW = new Date(2026, 10, 20, 15, 0, 0);
-const row = (id: string, title: string, minutes: number): Record<string, unknown> => ({
+const row = (id: string, title: string, minutes: number, tail: string): Record<string, unknown> => ({
   id,
   program: id.startsWith('c') ? 'codex' : 'claude_code',
   title,
@@ -22,8 +22,9 @@ const row = (id: string, title: string, minutes: number): Record<string, unknown
   model: null,
   started: null,
   last: new Date(NOW.getTime() - minutes * 60_000).toISOString(),
+  tail,
 });
-const ROWS = [row('a1', 'Fix the sign-in test', 1), row('c2', 'Add the export', 90), row('a3', 'Old work', 4000)];
+const ROWS = [row('c2', 'Add the export', 90, 'open'), row('w4', 'Runs now', 0, 'open'), row('a3', 'Old work', 4000, 'open_tool'), row('a1', 'Fix the sign-in test', 1, 'turn_ended')];
 
 function threadOf(id: string): Thread {
   const thread = threadFrom({
@@ -61,14 +62,18 @@ async function settle(): Promise<void> {
 }
 
 async function open(shell: Partial<ThreadsShell> = {}): Promise<ThreadsStore> {
-  const store = new ThreadsStore({
+  const store = new ThreadsStore(
+    {
     list: () => Promise.resolve(rowsFrom(ROWS) ?? []),
     read: (id) => {
       asked.push(id);
       return Promise.resolve(threadOf(id));
     },
     ...shell,
-  });
+    },
+    null,
+    () => NOW,
+  );
   await store.loadList();
   app = mount(ThreadsScreen, { target: document.body, props: { store, now: () => NOW } });
   flushSync();
@@ -80,16 +85,32 @@ const press = (key: string, more: KeyboardEventInit = {}): void => {
 };
 const titles = (): (string | null | undefined)[] => [...document.querySelectorAll('.row .words')].map((each) => each.textContent);
 
-it('THR-013: the list shows the threads in their groups, and no thread is open at first', async () => {
+it('THR-056: the threads that need you are at the top, the threads that work at the bottom, and the group Earlier is folded until it is opened', async () => {
   await open();
-  expect([...document.querySelectorAll('section[aria-label]')].map((each) => each.getAttribute('aria-label'))).toEqual(['Changed now', 'Today', 'Earlier']);
-  expect(titles()).toEqual(['Fix the sign-in test', 'Add the export', 'Old work']);
+  expect([...document.querySelectorAll('li.head')].map((each) => each.textContent.replace(/\s+/g, ''))).toEqual(['Needsyou1', 'Earlier2', 'Working1']);
+  expect(titles()).toEqual(['Fix the sign-in test', 'Runs now']);
+  document.querySelector<HTMLButtonElement>('.fold')?.click();
+  flushSync();
+  expect(document.querySelector('.fold')?.getAttribute('aria-expanded')).toBe('true');
+  expect(titles()).toEqual(['Fix the sign-in test', 'Add the export', 'Old work', 'Runs now']);
+  expect([...document.querySelectorAll('.row .state')].map((each) => each.textContent)).toEqual(['Your turn', 'Idle', 'Idle', 'Working']);
   expect(document.body.textContent).toContain('No thread is open');
   expect(asked).toEqual([]);
 });
 
+it('THR-055: a thread that waits for you is done when you opened it', async () => {
+  const store = await open();
+  expect(store.needsYou).toBe(1);
+  document.querySelector<HTMLButtonElement>('[data-thread="a1"]')?.click();
+  await settle();
+  expect(store.needsYou).toBe(0);
+  expect(document.querySelector('[data-thread="a1"] .state')?.textContent).toBe('Done');
+});
+
 it('THR-014, THR-015: a selected thread shows its prompt, its tool call with the failure, its reply and the read-only note', async () => {
   await open();
+  document.querySelector<HTMLButtonElement>('.fold')?.click();
+  flushSync();
   document.querySelector<HTMLButtonElement>('[data-thread="c2"]')?.click();
   await settle();
   expect(asked).toEqual(['c2']);
@@ -102,13 +123,13 @@ it('THR-014, THR-015: a selected thread shows its prompt, its tool call with the
   expect(document.querySelector('[data-thread="c2"]')?.getAttribute('aria-current')).toBe('true');
 });
 
-it('THR-016: the Down key opens the first thread, Cmd+2 the second, and E opens the tool calls', async () => {
+it('THR-016: the Down key opens the first thread, Cmd+2 the second of the threads that show, and E opens the tool calls', async () => {
   await open();
   press('ArrowDown');
   await settle();
   press('2', { metaKey: true });
   await settle();
-  expect(asked).toEqual(['a1', 'c2']);
+  expect(asked).toEqual(['a1', 'w4']);
   expect(document.querySelector('details')?.open).toBe(false);
   press('e');
   flushSync();

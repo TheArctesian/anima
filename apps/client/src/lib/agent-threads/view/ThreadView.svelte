@@ -1,18 +1,20 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import { KEY_WORDS } from './keys';
-  import { folderName, parts, programName, type Thread } from './thread';
+  import { KEY_WORDS } from '../keys';
+  import { STATE_MARKS, type ThreadState } from '../state';
+  import { folderName, parts, programName, type Thread } from '../thread';
+  import Markdown from './Markdown.svelte';
   import ToolBlock from './ToolBlock.svelte';
 
   interface Props {
     thread: Thread;
     /** Whether the tool calls are open (the key `E`). */
     toolsOpen: boolean;
-    /** Whether the file changed in the last 2 minutes. */
-    changedNow: boolean;
+    /** The state that the session file gives (THR-055). */
+    state: ThreadState;
   }
 
-  const { thread, toolsOpen, changedNow }: Props = $props();
+  const { thread, toolsOpen, state }: Props = $props();
   const timeline = $derived(parts(thread.entries));
   const clock = (at: Date | null): string => (at === null ? '' : at.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }));
   /** Agent usage with the folder of the thread chosen, when the folder has a name (THR-027). */
@@ -30,7 +32,7 @@
     </div>
     <p class="facts">
       <span>{programName(thread.program)}</span>
-      <span class="state" class:live={changedNow}>{changedNow ? 'Changed now' : 'Not changed now'}</span>
+      <span class="state" data-state={state} title={STATE_MARKS[state].detail}>{STATE_MARKS[state].words}</span>
       <span>This computer</span>
       {#if thread.folder !== null}<span class="mono" title={thread.folder}>{folderName(thread.folder)}</span>{/if}
       {#if thread.branch !== null}<span class="mono">{thread.branch}</span>{/if}
@@ -44,12 +46,12 @@
         <ToolBlock tools={part.tools} open={toolsOpen} />
       {:else if part.entry.kind === 'prompt'}
         <div class="you" data-prompt>
-          <p>{part.entry.text}</p>
+          <Markdown text={part.entry.text} />
           {#if part.entry.images > 0}<span class="at">{part.entry.images === 1 ? '1 image' : `${String(part.entry.images)} images`}</span>{/if}
           <span class="at">{clock(part.entry.at)}</span>
         </div>
       {:else if part.entry.kind === 'reply'}
-        <p class="reply">{part.entry.text}</p>
+        <div class="reply"><Markdown text={part.entry.text} /></div>
       {:else if part.entry.kind === 'reasoning'}
         <details class="reasoning"><summary>Reasoning</summary><p>{part.entry.text}</p></details>
       {:else if part.entry.kind === 'turn_end'}
@@ -129,8 +131,13 @@
     background: var(--status-unknown);
   }
 
-  .state.live::before {
+  .state[data-state='working']::before {
     background: var(--accent);
+  }
+
+  .state[data-state='may_wait']::before,
+  .state[data-state='your_turn']::before {
+    background: var(--status-degraded);
   }
 
   .mono {

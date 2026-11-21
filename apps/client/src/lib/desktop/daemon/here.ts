@@ -41,7 +41,7 @@ export interface DaemonHereParts {
 }
 
 /** Why this computer was not found among the devices of the hub; a fixed code for the log. */
-type NotFound = 'shell-does-not-read-this-computer' | 'link-list-not-read' | 'not-on-the-link' | 'device-list-not-read' | 'not-a-device-yet';
+export type NotFound = 'shell-does-not-read-this-computer' | 'link-list-not-read' | 'not-on-the-link' | 'device-list-not-read' | 'not-a-device-yet';
 
 /**
  * The install can start before it can work: the person is not signed in yet, this computer is not a device of the hub
@@ -62,8 +62,11 @@ export type DaemonHere =
   | { readonly kind: 'not-ready' }
   | { readonly kind: 'failed'; readonly step: 'enrol' | DaemonShellProblem };
 
+/** What finding this computer among the devices of the hub needs. */
+export type FindHereParts = Pick<DaemonHereParts, 'device' | 'linkDevices' | 'devices'>;
+
 /** The device of the hub whose host is the link address of this computer, or why it was not found. */
-async function deviceHere(parts: DaemonHereParts): Promise<HubDevice | NotFound> {
+export async function deviceHere(parts: FindHereParts): Promise<HubDevice | NotFound> {
   const computer = await parts.device();
   if (computer === null) return 'shell-does-not-read-this-computer';
   const linked = await parts.linkDevices();
@@ -146,12 +149,7 @@ export function installDaemonOnThisComputer(hub: Hub, show: (did: DaemonHere | '
   show('installing');
   const done = installDaemonHere({
     bundled: daemonBundled,
-    device: readCloudDevice,
-    linkDevices: () => linkApi(hub).devices(),
-    devices: async () => {
-      const page = await devicesApi(hub).list({ first: ONE_PAGE });
-      return page.ok ? { ok: true, value: page.value.edges.map((edge) => edge.node) } : page;
-    },
+    ...findHereParts(hub),
     enrol: (deviceId) => metricsApi(hub).enrolDaemon(deviceId),
     install: installDaemon,
     origin: hub.address.origin,
@@ -159,6 +157,18 @@ export function installDaemonOnThisComputer(hub: Hub, show: (did: DaemonHere | '
   });
   void done.then(show);
   return done;
+}
+
+/** The calls of the shell and of `hub` that find this computer among the devices of the hub. */
+export function findHereParts(hub: Hub): FindHereParts {
+  return {
+    device: readCloudDevice,
+    linkDevices: () => linkApi(hub).devices(),
+    devices: async () => {
+      const page = await devicesApi(hub).list({ first: ONE_PAGE });
+      return page.ok ? { ok: true, value: page.value.edges.map((edge) => edge.node) } : page;
+    },
+  };
 }
 
 /** For tests: the next call runs as the first of a start of the app. */
