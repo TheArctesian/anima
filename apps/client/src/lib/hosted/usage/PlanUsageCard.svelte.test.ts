@@ -57,7 +57,7 @@ describe('the plan and its use on the page of the hub (HMD-073 in form B)', () =
   });
 
   it('for an account that owes (a member of the site) points to the account page and shows no sum of it', async () => {
-    await card(figures({ ...POOL_ANSWER, version: 1, owes: true }));
+    await card(figures({ ...POOL_ANSWER, owes: true }));
     expect(words()).toContain(OWES);
     expect(document.querySelector('a')?.getAttribute('href')).toBe('https://cloud.anima.ing/account');
   });
