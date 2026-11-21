@@ -18,6 +18,8 @@ The socket of the hub for its own daemon (Section 1, task HM-T35) and the batch 
 [hosted-mode.md](../docs/proposals/hosted-mode.md), task HM-T34) were approved by R-305 (operator, 2026-11-20; CON-001). They use only kinds and members that exist, so they need no new version of this contract.
 The kind `battery_percent` and the member `batteries` of Section 4 (MET-032, CAP-004; R-303) were approved
 with them by the same ruling. They are optional, so they need no new version of this contract.
+The first wait after a failure in Section 7 was changed from 10 to 2 seconds by R-NEW-pushretry (orchestrator, 2026-11-21,
+made overnight, not yet confirmed; CON-001). It changes no message, so it needs no new version of this contract.
 
 This contract and the work route contract K10 ([work-route.md](work-route.md); accepted by R-209, 2026-11-19) are the whole interface between `anima-daemon` and the hub. The daemon makes the requests of K8 and of K10 and no other.
 
@@ -454,7 +456,8 @@ and tries again after its wait (Section 7).
   at once while points remain.
 - While the hub cannot be reached (a network error, a timeout of 10 seconds, a 5xx), it keeps up to 360
   points (1 hour), dropping the oldest first, and drops any point older than 59 minutes before it sends.
-- After a failure it waits 10 seconds, doubling to at most 60 seconds, then resumes the 10-second rhythm. Each
+- After a failure it waits 2 seconds, doubling to at most 60 seconds (2, 4, 8, 16, 32, 60, 60 seconds;
+  R-NEW-pushretry), then resumes the 10-second rhythm. Each
   wait after a failure is moved at random by up to 20 % either way (so at most 72 seconds), so daemons that
   failed together do not all try again together.
 

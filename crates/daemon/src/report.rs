@@ -1,6 +1,8 @@
 //! The daemon's log lines, in one place: what happened, by code or cause, never a token, a
 //! code or a body (LOG-007). Called from the I/O edge only.
 
+pub mod log_file;
+
 use daemon_core::agent_usage::UsageState;
 use daemon_core::wire::RefusalCode;
 
@@ -97,4 +99,14 @@ fn sampling_panicked() {
 
 fn sampling_returned() {
     tracing::error!("sampling stopped before the daemon was told to stop");
+}
+
+/// Once, when the log file cannot be opened: the log goes to standard error.
+pub fn log_file_refused(error: &std::io::Error) {
+    tracing::error!(%error, "the log file could not be opened; logging to standard error");
+}
+
+/// The run ended on an error; the service manager starts the daemon again.
+pub fn run_ended(error: &dyn std::error::Error) {
+    tracing::error!(%error, "the daemon stopped on an error");
 }

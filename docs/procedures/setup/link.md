@@ -219,6 +219,16 @@ anima-daemon enrol - --hub "unix:<FOLDER>/link.sock"
   invite of its own. Who starts the link of the daemon on a computer of a person is not decided
   (HM-D16 of [hosted-mode.md](../../proposals/hosted-mode.md)).
 
+The log of the daemon tells why it does not push (a refused token, a failed push and its cause). It holds
+no token, no code and no metric value (LOG-007; R-NEW-pushretry):
+
+- macOS (the LaunchAgent): `~/Library/Logs/Anima/anima-daemon.log`. At 1 MiB it becomes
+  `anima-daemon.log.1` and a new file starts, so at most 2 MiB stay. Read it with
+  `tail -f ~/Library/Logs/Anima/anima-daemon.log` or in the application Console.
+- Linux, user unit: `journalctl --user -u anima-daemon`. System unit: `journalctl -u anima-daemon`.
+- A unit that was installed before this change writes no file. Run `anima-daemon install` again to
+  write the unit again (HT-NEW-daemonlog).
+
 ## 8. Limits and known faults
 
 What the operator accepts with this version, the most important first:

@@ -13,6 +13,7 @@ use anima_daemon::hub::enrolment::Enrolment;
 use anima_daemon::hub::{HubClient, TIMEOUT};
 use anima_daemon::keys::{self, store::KeyStore};
 use anima_daemon::readers::Platform;
+use anima_daemon::report::{self, log_file};
 use anima_daemon::runtime;
 use anima_daemon::token_store::TokenStore;
 use anima_daemon::units::install::Host;
@@ -24,13 +25,7 @@ use zeroize::Zeroizing;
 async fn main() -> ExitCode {
     #[cfg(windows)]
     let _ = anima_windows::console::attach_parent();
-    tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .init();
+    start_log();
     let command = match cli::parse(std::env::args().skip(1)) {
         Ok(command) => command,
         Err(error) => return usage(&error),
@@ -45,7 +40,10 @@ async fn main() -> ExitCode {
     match command {
         Command::Run { hosted_hub } => match runtime::run(&home, hosted_hub, stop()).await {
             Ok(()) => ExitCode::SUCCESS,
-            Err(error) => failure(&error),
+            Err(error) => {
+                report::run_ended(&error);
+                failure(&error)
+            }
         },
         Command::Enrol { code, hub } => enrol(code, hub, &home).await,
         Command::Install { target } => install(target, &home),
@@ -55,6 +53,27 @@ async fn main() -> ExitCode {
             Ok(()) => ExitCode::SUCCESS,
             Err(error) => failure(&error),
         },
+    }
+}
+
+/// The log to standard error, or to the size-bounded file that the `LaunchAgent` asks for
+/// (MET-019); standard error again when that file cannot be opened.
+fn start_log() {
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+    let path = log_file::path(
+        |name| std::env::var(name).ok(),
+        Platform::current() == Platform::Macos,
+    );
+    let opened = path.map(|path| log_file::LogFile::open(path, log_file::BOUND));
+    let log = tracing_subscriber::fmt().with_env_filter(filter);
+    match opened {
+        Some(Ok(file)) => log.with_writer(std::sync::Mutex::new(file)).init(),
+        None => log.with_writer(std::io::stderr).init(),
+        Some(Err(error)) => {
+            log.with_writer(std::io::stderr).init();
+            report::log_file_refused(&error);
+        }
     }
 }
 

@@ -3084,3 +3084,33 @@ with real projects, in a desktop window or on a phone.
    Expected: the bar wraps to a second line where the screen is narrow; no word is in capitals.
 
 Result: Open.
+
+### HT-NEW-daemonlog: the log of the daemon in a file on macOS and in the journal on Linux (MET-019, R-NEW-pushretry)
+
+Built on the branch `daemon/push-retry-log`: the LaunchAgent (`crates/daemon/units/ing.anima.daemon.plist`) sets
+`ANIMA_DAEMON_LOG=file`, and the daemon then writes its log to `~/Library/Logs/Anima/anima-daemon.log`
+(`crates/daemon/src/report/log_file.rs`). At 1 MiB the file becomes `anima-daemon.log.1` and a new file starts.
+The tests prove the path, the rotation, the modes 0600 and 0700, and the variable in the rendered LaunchAgent,
+in a temporary folder. No test ran the daemon under launchd or under systemd, and no test let a real daemon
+fill 1 MiB.
+
+1. On a Mac with the daemon enrolled, run `anima-daemon install` with the build of this branch.
+   Expected: "Installed … and started the daemon."
+2. Run `ls -l ~/Library/Logs/Anima/`.
+   Expected: `anima-daemon.log` with the mode `-rw-------`, and the folder with `drwx------`.
+3. Run `cat ~/Library/Logs/Anima/anima-daemon.log`.
+   Expected: a line "the daemon is running" with the identifier of the device, and one line for agent usage.
+4. Stop the link, or the network, for 1 minute, then start it again.
+   Expected: lines "push failed; keeping the points" with a cause, then "the hub answers again".
+5. Run `grep -E 'anima_daemon_|anima_enrol_' ~/Library/Logs/Anima/anima-daemon.log*`.
+   Expected: no line. Read the file: no metric value, no address of the hub other than what the log of the hub
+   shows.
+6. Fill the file to near its bound, then start the daemon again: run
+   `head -c 1048500 /dev/zero | tr '\0' x >> ~/Library/Logs/Anima/anima-daemon.log`, then `anima-daemon install`.
+   Wait 1 minute, then run `ls -l ~/Library/Logs/Anima/`.
+   Expected: `anima-daemon.log.1` (the file with the `x` characters) and a new, small `anima-daemon.log` that
+   holds the line "the daemon is running"; no third file.
+7. On Linux with the user unit installed, run `anima-daemon install`, then `journalctl --user -u anima-daemon -n 20`.
+   Expected: the same lines as step 3. With the system unit: `sudo journalctl -u anima-daemon -n 20`.
+
+Result: Open.
