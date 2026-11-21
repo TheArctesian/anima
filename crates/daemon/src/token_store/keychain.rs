@@ -48,6 +48,18 @@ impl Backend {
             .set_password(text)
             .map_err(|error| TokenStoreError::Keychain(error.to_string()))
     }
+
+    /// Deletes the item; an item that is not there is not an error.
+    #[expect(
+        clippy::unused_self,
+        reason = "same signature as the file backend on other systems"
+    )]
+    pub fn delete(&self) -> Result<(), TokenStoreError> {
+        match entry()?.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(error) => Err(TokenStoreError::Keychain(error.to_string())),
+        }
+    }
 }
 
 fn entry() -> Result<Entry, TokenStoreError> {

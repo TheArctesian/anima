@@ -86,6 +86,7 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-050 | The device link runs as a unit of the user (HMD-058, task HM-T24 part a) | A Mac or a Linux computer with a device link that joined a hub, and `anima-link` of this build | Open |
 | HT-060 | The Projects page after the interface review: the choice of the group, tiles with no border (R-224) | The desktop application of a build that holds the branch `ui/v2-projects`, the extension Projects on, GitHub connected | Open |
 | HT-061 | Sign in to a hosted hub, and the metrics of this computer appear (HMD-053, HMD-054; tasks HM-T17 to HM-T19) | This Mac and the Linux computer, each with an application of this build that carries `anima-daemon` and `anima-link`, signed in to the hosted hub | Open |
+| HT-NEW-daemonremoval | The sign-out of a hosted hub takes the daemon off this computer and revokes it at the hub (HMD-056; task HM-T21) | This Mac with an application of a build that holds the branch `hosted/hm-t21-daemon-removal`, signed in to the hosted hub with the daemon installed (HT-061 step 1); the Linux computer for step 7 | Open |
 | HT-057 | The Settings page after the interface review: the index and the sections in three groups (R-224) | The desktop application of a build that holds the branch `ui/v2-settings`, and a phone | Open |
 | HT-052 | The tab Containers of a device after the interface review: one State column, one pane for the log and the details (R-224) | The desktop application of a build that holds the branch `ui/v2-device-containers`, a device with Docker and an SSH credential | Open |
 | HT-055 | The sign-in with the Anima.ing account on a phone, to the hosted hub | The iPhone simulator or the Android emulator with a build of `mobile/account-sign-in`, then a real iPhone and a real Android phone, and an Anima.ing account | Open |
@@ -1169,6 +1170,58 @@ double quotes in a command, because the path has a space.
    `ls ~/Library/LaunchAgents/ing.anima.link.plist` finds nothing.
 The repair while the application runs (task HM-T37), on this Mac, after step 1 of this check passed: run `launchctl bootout gui/$(id -u)/ing.anima.link` and `rm ~/Library/LaunchAgents/ing.anima.link.plist`, and leave the application open. Expected: after about 40 seconds the file is there again, `pgrep anima-link` prints a number, and the log of the application has the line "the device link of the unit did not answer: the unit was installed and started again". A cleaning tool can do the same as these two commands: it may delete a launch agent that it does not know (seen 2026-11-20, see HT-061).
 
+
+### HT-NEW-daemonremoval: the sign-out of a hosted hub takes the daemon off this computer and revokes it (HMD-056; task HM-T21)
+
+Built: on the branch `hosted/hm-t21-daemon-removal`. The daemon has the command
+`anima-daemon uninstall` (`crates/daemon/src/units/removal.rs`): it stops the user unit or the
+`LaunchAgent`, deletes its file, then deletes the token (the Keychain item `ing.anima.daemon` on a
+Mac, the file `token` on Linux) and the key cache. The shell has `daemon_remove`
+(`apps/desktop/src-tauri/src/daemon/removal.rs`): it runs `uninstall` with
+`~/.local/bin/anima-daemon`, then deletes that copy. The client
+(`apps/client/src/lib/desktop/daemon/leave.ts`) runs it at Sign out and at Change hub of a hosted
+hub, before the logout, and revokes the daemon at the hub.
+
+The tests cover, with stand-ins in temporary folders: the order of the commands for a
+`LaunchAgent` and for a systemd user unit, a second removal, a unit that is not loaded, a stop that
+cannot run, the token forgotten only after the unit is out, the copy that runs `uninstall` and is
+then deleted, a daemon that refuses (the copy stays), the client that removes first and revokes
+second, an unreachable hub and its sentence, and a second sign-out with no sentence. Not covered:
+the real `launchctl`, `systemctl`, Keychain and `~/.local/bin`, the hub of the pool, and the
+Linux code paths, which were read but not run on a Mac (the file token store and the systemd steps).
+
+It needs: an application of this build, the sign-in to the hosted hub, and HT-061 step 1 passed (the
+daemon reports).
+
+On this Mac:
+
+1. Before the sign-out, run `ls ~/Library/LaunchAgents/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `security find-generic-password -s ing.anima.daemon -a daemon-token`.
+   Expected: `ing.anima.daemon.plist` is listed, the copy is there, and `security` prints the item
+   (it does not print the token with no `-w`).
+2. In the application open Settings, press Sign out. Expected: the sign-in page shows, with no
+   question of the Keychain and no message.
+3. Run the three commands of step 1 again. Expected: no `ing.anima.daemon.plist` (the
+   `ing.anima.link.plist` of the link may stay), "No such file or directory" for the copy, and
+   "The specified item could not be found in the keychain." from `security`. `pgrep -x anima-daemon`
+   prints nothing.
+4. Sign in again (from a browser at the address of the hub, or from the application), open the
+   device of this Mac, Settings, the panel "Daemon". Expected: "Daemon revoked." Open Logs. Expected:
+   a line "Revoked the daemon token of <the name of this Mac>." at the time of step 2.
+5. The installation at this sign-in: wait 3 minutes. Known gap (HM-T21 row): the device keeps the
+   source Daemon, so the application does not install the daemon again; write down what you see.
+   To install it again for the next steps, change the metrics source of this Mac to None in its
+   Settings, then quit and open the application; HT-061 step 1 then applies.
+6. With the daemon installed again, turn the network off (Wi-Fi off), press Sign out. Expected: the
+   Settings page stays and says "The daemon is removed from this computer, but the hub could not be
+   reached and still lists it. Revoke the daemon on the page of this computer in Devices when the
+   hub answers." The commands of step 1 show the same as in step 3. Turn the network on, sign in,
+   open the panel "Daemon". Expected: the daemon is not shown as revoked (no "Daemon revoked."); its
+   readings are stale. Press "Revoke daemon" there.
+7. On the Linux computer, steps 1 to 3 with `ls ~/.config/systemd/user/ | grep anima`,
+   `ls -l ~/.local/bin/anima-daemon` and `ls ~/.config/anima-daemon/`. Expected after the sign-out:
+   no `anima-daemon.service`, no copy, no file `token` in the folder of the daemon, and
+   `systemctl --user status anima-daemon` says that the unit could not be found.
 
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
