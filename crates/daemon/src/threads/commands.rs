@@ -320,7 +320,8 @@ pub async fn end_all(shared: &Arc<Mutex<Shared>>) {
     let running: Vec<ThreadKey> = locked(shared)
         .threads
         .iter()
-        .filter(|(_, slot)| slot.exit.is_none())
+        // A program that ended but left a process its sweep could not end is swept again.
+        .filter(|(_, slot)| slot.exit.is_none() || slot.left_behind)
         .map(|(key, _)| key.clone())
         .collect();
     for thread in running {
