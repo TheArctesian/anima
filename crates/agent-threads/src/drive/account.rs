@@ -26,7 +26,7 @@ pub struct Private(String);
 impl Private {
     fn of(value: &Value) -> Option<Self> {
         let text = value.as_str().filter(|text| !text.trim().is_empty())?;
-        Some(Self(crate::held(text, MAX_FIELD)))
+        Some(Self(crate::held(&shown(text), MAX_FIELD)))
     }
 
     /// The text, for the person on this computer only.
@@ -115,11 +115,19 @@ impl AccountFacts {
     }
 }
 
+/// `text` without control characters and the marks that hide or reorder text (THR-125): a
+/// name, a plan or a window is drawn for the person as the program wrote it.
+fn shown(text: &str) -> String {
+    text.chars()
+        .filter(|&each| !each.is_control() && !crate::marks::is_hidden_mark(each))
+        .collect()
+}
+
 fn plan(value: &Value) -> Option<String> {
     value
         .as_str()
         .filter(|plan| !plan.is_empty() && *plan != "unknown")
-        .map(|plan| crate::held(plan, MAX_FIELD))
+        .map(|plan| crate::held(&shown(plan), MAX_FIELD))
 }
 
 fn percent(used: f64) -> u8 {
@@ -233,7 +241,7 @@ fn claude_window(name: &str, window: &Value) -> Option<Limit> {
         return None;
     }
     Some(Limit {
-        window: crate::held(name, MAX_FIELD),
+        window: crate::held(&shown(name), MAX_FIELD),
         used_percent: used,
         resets_at: window["resetsAt"].as_i64(),
         reached: status == Some("rejected"),

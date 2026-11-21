@@ -204,3 +204,13 @@ fn thr_132_a_codex_window_with_no_length_keeps_its_own_name() {
         .collect();
     assert_eq!(windows, ["primary", "secondary"]);
 }
+
+#[test]
+fn thr_125_a_plan_with_hidden_marks_is_shown_without_them() {
+    let plan = facts(&codex(
+        r#"{"method":"account/updated","params":{"authMode":"chatgpt","planType":"pr\u202eo\u0007"}}"#,
+    ))[0]
+    .plan
+    .clone();
+    assert_eq!(plan.as_deref(), Some("pro"));
+}
