@@ -1292,6 +1292,22 @@ On this Mac:
    Expected: after the restart the thread is still idle or working, and `pgrep -fl "anima-daemon holder"`
    shows the same pid as before. The runner connects to the holder again in about 30 seconds; while no
    runner runs, the page shows the link as down.
+10. Only after the model cycle wiring of the Level 1 model service is in `dev` (its sweep at the start of
+    the daemon and its stop of the model servers at a stop); until then nothing starts a model server, and
+    this step waits. The rule, agreed between this task and the model service on 2026-11-21 and recorded
+    with the model service's finding of the kill mode: `KillMode=process` stays, so the holder and each
+    process below it outlive each stop, crash and update of the daemon. Each model server runs in a
+    cgroup of its own, `anima-model-<server>-<start>`, directly below the cgroup of the unit; the daemon
+    ends these at its stop, and at its next start it kills what a crash left in them. Nothing else is
+    signalled. On the Linux computer with a GPU: start an agent thread and a model server, and write down
+    `nvidia-smi --query-gpu=memory.used --format=csv` and the pid of `pgrep -fl "anima-daemon holder"`.
+    Run `systemctl --user kill -s KILL anima-daemon` and wait until
+    `systemctl --user show -p MainPID anima-daemon` shows a new pid. Expected: no `anima-model-` cgroup
+    under the cgroup of the unit holds a process that the crashed daemon started
+    (`systemd-cgls --user-unit anima-daemon`), the GPU memory of that server is free, the holder has the
+    same pid, and the thread still answers. Then `systemctl --user stop anima-daemon` with a model
+    server running. Expected: the server process is gone and the holder stays. Not for macOS: there the
+    model servers have no cgroup and `KillMode` does not apply; the model service checks that case.
 
 ### HT-068: a Linux computer whose `~/.local/bin` its group can write gets the link as a unit and the daemon (DEF-007)
 
