@@ -58,7 +58,7 @@
           {/each}
         </dl>
       {:else}
-        <p class="overview-figures none">No checks</p>
+        <p class="overview-figures none">No checks yet</p>
       {/if}
     </section>
     {#if hostKey}<HostKeyCard ssh={device.ssh} />{/if}

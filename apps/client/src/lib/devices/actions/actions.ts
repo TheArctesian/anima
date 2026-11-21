@@ -46,9 +46,17 @@ const WARNING_TEXT: Record<AccessWarning, string> = {
   UNENCRYPTED_VNC: 'VNC is not encrypted. Use it only over the VPN.',
 };
 
+/** RA-020: what the Warning badge means, before its list of warnings. */
+export const WARNING_MEANING = 'A way into this device is not well protected. The device itself can be up and working.';
+
 /** RA-020: each warning in words, in the order the hub gave them. */
 export function warningLines(warnings: readonly AccessWarning[]): string[] {
   return warnings.map((warning) => WARNING_TEXT[warning]);
+}
+
+/** RA-020: what a screen reader says for the badge: the word, what it means, then each warning. */
+export function warningName(warnings: readonly AccessWarning[]): string {
+  return [`Warning: ${WARNING_MEANING}`, ...warningLines(warnings)].join(' ');
 }
 
 export interface Point {
