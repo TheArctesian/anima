@@ -45,7 +45,7 @@ interface Gates { jobs: Record<string, { env?: Record<string, string>; if?: stri
 const gates = Bun.YAML.parse(readFileSync(join(root, ".github/workflows/gates.yml"), "utf8")) as Gates;
 
 test("merge trains build Windows from the same dev base and provide its trial artifacts", () => {
-  expect(gates.jobs["windows"]?.if).toBe("(github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/')) && needs.base.outputs.documents_only != 'true'");
+  expect(gates.jobs["windows"]?.if).toBe("(github.ref == 'refs/heads/dev' || startsWith(github.ref, 'refs/heads/train/') || github.event_name == 'workflow_dispatch') && needs.base.outputs.documents_only != 'true'");
   expect(gates.jobs["windows"]?.with?.["dev_sha"]).toBe("${{ needs.base.outputs.dev_sha }}");
   const steps = workflow.jobs["windows"]?.steps ?? [];
   expect(steps.find((step) => step.uses?.startsWith("actions/checkout@"))?.with?.["ref"]).toBe("${{ inputs.ref }}");
