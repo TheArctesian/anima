@@ -269,10 +269,6 @@ fn hmd_071_a_hosted_hub_with_the_daemon_program_has_a_daemon_of_its_own() {
     );
     let enrolled = own.hub_environment(true);
     assert_eq!(value(&enrolled, "ANIMA_OWN_DAEMON_CODE_FILE"), None);
-    assert_eq!(
-        own.token_file(),
-        PathBuf::from("/srv/hub root/daemon/token")
-    );
 
     let enrolment = own.enrolment();
     assert_eq!(

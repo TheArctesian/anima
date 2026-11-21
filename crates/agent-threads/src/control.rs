@@ -151,7 +151,7 @@ pub struct Limits {
     pub running: u32,
 }
 
-/// The words of the operator at a limit (THR-114, R-NEW-threadsdrive).
+/// The words of the operator at a limit (THR-114, R-308).
 pub const OVER_LIMIT: &str = "You are over the recommended guidance and at risk of cyberpsychosis from running this many sessions. Do you want to raise the limit?";
 
 impl Limits {

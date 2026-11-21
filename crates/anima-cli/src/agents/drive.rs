@@ -24,7 +24,7 @@ pub enum ProgramName {
 
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum ModeName {
-    /// The program asks nothing (the default, R-NEW-threadsdrive).
+    /// The program asks nothing (the default, R-308).
     FullAccess,
     /// The program changes files in the folder without asking and asks for the rest.
     AcceptEdits,

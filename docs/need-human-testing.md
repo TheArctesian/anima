@@ -93,10 +93,10 @@ do each check on a real computer, a real account or a real network. `AGENTS.md`,
 | HT-053 | The iOS archive with a signature, and the build from TestFlight on a real iPhone | This Mac with the Apple Distribution certificate in the login keychain and the App Store profile of `ing.anima.mobile`, App Store Connect, and a real iPhone | Open |
 | HT-054 | The sign-in inside the iPhone application, through WorkOS | The WorkOS dashboard, a build of `mobile/native-sign-in` on the iPhone simulator or a real iPhone, and an Anima.ing account | Open |
 | HT-067 | The tab Overview of a device with the cards Connect and About, the chart figures and the storage table (R-224) | The desktop application of a build that holds the branch `ui/v2-overview-full`; a Linux device with a daemon and a drive that is not mounted; a device with a web interface | Open |
-| HT-NEW-threadsholder | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
-| HT-NEW-threadsdrive | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
+| HT-098 | The holder of the agent programs on Linux, against a second user of the computer, and with a process that leaves the tree (THR-049, THR-113, THR-128) | The Linux computer `pop-os` with Rust and a checkout of the local branch `threads/runner`; a Mac with an administrator account to make a second user | Open |
+| HT-097 | The thread runner of the daemon: Claude Code and Codex started and driven on this computer (TH11 to TH13) | A Mac with Claude Code and Codex signed in, and a build of the local branch `threads/runner` with a state folder and a label of your own | Open |
 | HT-079 | The page Threads with the real sessions of Claude Code and Codex of this computer (R-286) | A Mac and the Linux computer `pop-os`, each with sessions of the two programs, and a build of the branch `threads/read-side` | Open |
-| HT-NEW-threadsscroll | The page Threads: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
+| HT-100 | The page Threads: the list and the thread scroll on their own, and a thread opens at its newest end (THR-013, THR-014) | The desktop application of a build that holds the branch `threads/scroll`, with sessions of Claude Code or Codex on the Mac | Open |
 | HT-065 | The measurements of the isolation design on Linux (task W2): a job in a rootless container on the computer `pop-os` | The computer `pop-os`, a terminal there, and one `sudo` for the installation of Podman | Open |
 | HT-062 | `anima mcp install` with the real coding agents (MCP-027 to MCP-038) | A Mac and a Linux computer with the `anima` of a build that holds the branch `mcp/install`, signed in, and the agents of Section 12.2 of the command line plan that you use | Open |
 | HT-056 | The bar: Live sessions at the foot, Extensions as its own page above Settings (R-255) | The desktop application of a build that holds the branch `ui/bar-foot`, and a phone | Open |
@@ -2531,6 +2531,11 @@ is built and was not seen: no desktop build was made.
    `anima mcp uninstall`, and `anima mcp install`.
    Expected: the state is "set up, starts a different anima"; uninstall leaves it; install replaces it after it shows
    it in its list.
+8. On a Mac with Anima.ing in `/Applications` and the command line tool installed from the application, open Settings,
+   then the part "Coding agents" (the review of 12.7 of cli-mcp-plan.md corrected the check of `/Applications`).
+   Expected: the list of the agents, not "a different user can change". While the page opens, look at the list of
+   processes (Activity Monitor, search "anima"): write down if an `anima mcp` starts only because the page opened
+   (12.7, row 2). The page shows the states within 20 seconds, also when an agent does not answer.
 ### HT-056: the bar with Live sessions at the foot and Extensions beside Settings (R-255)
 
 Built on the branch `ui/bar-foot` (`66c730ad`): in `apps/client/src/lib/nav/Nav.svelte` Live sessions is directly above the
@@ -2654,7 +2659,7 @@ not compared with its mockup.
 Result: Open.
 
 
-### HT-NEW-threadsholder: the holder on Linux, against a second user, and with a process that leaves the tree (THR-049, THR-113, THR-128)
+### HT-098: the holder on Linux, against a second user, and with a process that leaves the tree (THR-049, THR-113, THR-128)
 
 Built on the branch `threads/runner` (tasks TH11 and TH17 of [agent-threads.md](proposals/agent-threads.md)). The tests
 run on a Mac as one user, and in the gates on GitHub on Linux (Ubuntu, procps `ps`). The first Linux run found one defect:
@@ -2683,7 +2688,7 @@ cgroup of the user (`systemd-run --user --scope`) would close this gap; it is no
 2. On `pop-os`, run `cargo test -p anima-daemon tree` and `ps -axo pid=,ppid=,lstart= | head -3`.
    Expected: the tests pass; each line of `ps` has a number, a number and a date of five words.
 3. On the Mac, make a second user (System Settings, Users and Groups). As the first user, start a daemon of the build
-   with a state folder of your own and one thread (step 1 of HT-NEW-threadsdrive). Note the state folder.
+   with a state folder of your own and one thread (step 1 of HT-097). Note the state folder.
 4. Log in as the second user. Run `ls -l <state folder>/threads` and `nc -U <state folder>/threads/holder.sock`, then
    `nc -U <state folder>/threads/runner.sock`.
    Expected: `ls` says permission denied (the folder is 0700). If you give the second user a way into the folder,
@@ -2699,7 +2704,7 @@ cgroup of the user (`systemd-run --user --scope`) would close this gap; it is no
 
 Result: Open.
 
-### HT-NEW-threadsdrive: the thread runner of the daemon starts and drives Claude Code and Codex (TH11 to TH13)
+### HT-097: the thread runner of the daemon starts and drives Claude Code and Codex (TH11 to TH13)
 
 Built on the local branch `threads/runner` (tasks TH11 to TH13 of [agent-threads.md](proposals/agent-threads.md)): the
 holder and the runner in `anima-daemon`, the local socket, and the commands `anima agents start`, `send`, `approve`,
@@ -2780,6 +2785,7 @@ of Codex show again only when a new Codex thread starts. The limits come back wi
 5. Do steps 1 and 3 on `pop-os`.
    Expected: the same.
 ### HT-NEW-threadsnotice: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
+### HT-099: the notice of the folder of a new thread names what its project files run (THR-046, OD-THR21)
 
 Built on the branch `threads/runner` (the call `folder` of the runner, the first line of a new thread, and the output of
 `anima agents start`) and on `threads/client` (the box in the dialog "New thread"). The runner reads
@@ -3001,6 +3007,29 @@ control group, its user and its folders.
 
 Result: Open.
 
+### HT-095: the daemon of a hosted hub keeps its enrolment across starts and enrols again after a refusal (HM-T35, HMD-046)
+
+Built on the branch `hosted/hm-t35-hub-daemon`: `crates/anima-local-hub/src/members/own_daemon.rs` (an enrolment is
+the token and the configuration of the daemon together) and `crates/daemon/src/runtime.rs` (with `--hosted-hub`, a
+refused token is deleted and the run ends). The tests prove the decision on the files of the daemon's folder and,
+on Linux, a run against a fake hub on a socket that refuses the token. No test ran the group in a container of the pool
+with the real hub, its database and a revoked token.
+
+1. Use an image of the pool that carries `anima-daemon` (HT-096 step 1). Start a hub with it, and note the
+   time of the entry "enrolled" of the hub's own device in the event log. Restart the hub two times.
+   Expected: the event log has one entry "enrolled" for the hub's device. The device list has one device of the kind
+   `hub`. The file `/run/anima/own-daemon.code` does not exist. The row `Hub` shows figures after each start.
+2. Revoke the daemon token of the device of the kind `hub`: run `anima daemon revoke <the id of that device>`
+   against the hub.
+   Expected: in one minute, `/var/lib/anima/hub/log/anima-daemon.log` says that the hub refused the token and that it
+   is deleted. `/var/lib/anima/hub/daemon/token` does not exist. The log shows no token and no code.
+3. Restart the hub.
+   Expected: the event log has a new entry "enrolled" for the same device; the device list still has one device of
+   the kind `hub`. The row `Hub` shows figures again in two minutes. `/run/anima/own-daemon.code` does not exist.
+
+Result: Open.
+
+### HT-094: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
 ### HT-084: the daemon reads the battery of a real laptop and the hub keeps it (MET-032, BT2, BT3)
 
 Built on the branch `metrics/battery`: `crates/daemon-core/src/readings/batteries.rs` (the rules of the files of
@@ -3022,6 +3051,69 @@ kernel files and of `pmset`, the batch, and the hub with a pushed batch. No test
    Expected: one battery `InternalBattery-0` with the charge and the state that `pmset` shows. The health is empty.
 5. Do step 1 on a desktop computer or a server with no battery.
    Expected: `batteries` is empty and there is no series `BATTERY_PERCENT`.
+
+Result: Open.
+
+### HT-089: the battery beside the meters of the Devices list, the Overview and Agent usage (MET-032, BT5)
+
+Built on the branch `metrics/battery-display`: `apps/client/src/lib/metrics/battery/` (the meter, the shape, the
+charges of the batches), `lib/devices/list/Meters.svelte` and `lib/devices/card/` (the list and the grid),
+`lib/metrics/bars/MetricBars.svelte` (the Overview), `lib/agent-usage/view/ShareTable.svelte` (Agent usage). The
+tests prove the meter with a fake hub and pushed batches in jsdom. No test showed a real laptop in a window, and the
+design was approved overnight by the orchestrator only.
+
+1. Open the Devices page with a laptop that runs a daemon of this build (HT-088) and a server with no battery,
+   in the list view. Wait 10 seconds.
+   Expected: the usage column has a fourth head "Battery". The laptop row shows a battery shape and its charge after
+   Disk; the server row shows nothing there. With no laptop in the list there is no fourth head.
+2. Connect the mains of the laptop and wait 10 seconds; then disconnect it.
+   Expected: while it charges the shape has a bolt; on battery the shape is a plain battery. The charge follows the
+   laptop within 10 seconds.
+3. Let the laptop discharge to 20 %, then to 10 % (or test on a laptop that is that low).
+   Expected: the charge and the bar take the quiet warning colour and the shape shows one bar; a screen reader says
+   "low" at 20 % and "very low" at 10 %. Connect the mains: the warning goes.
+4. Switch to the grid view.
+   Expected: the tile of the laptop has a fifth meter "Battery" on the same line as CPU, Memory and Disk, with the same
+   height; the tile keeps its size.
+5. Open the laptop, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars have "Battery" with its charge, and "charging" or "low" beside the word when it applies. A laptop
+   with a GPU that has its own memory shows the battery on a third line of bars.
+6. Open Agent usage with the laptop reporting.
+   Expected: its row in "By device" has the battery shape and its charge after its name; the other rows have none.
+7. Compare each screen with the mockups devices-v2, device-overview-v2 and agent-usage-v2 and their records.
+   Expected: the place and the order of the battery agree, with the differences in the records only.
+
+Result: Open.
+
+### HT-091: the row Hub and its page show the figures of its container and what it keeps (HM-T36, HMD-073, HMD-046)
+
+Built on the branch `hosted/hm-t36-hub-row`: `apps/client/src/lib/metrics/container/` (the CPU and the memory of the
+container, the bytes of memory in use from the batches of the hub's own device), `lib/devices/list/Meters.svelte` and
+`lib/devices/card/` (the row and the tile), `lib/devices/actions/` (no way in on the row), `lib/hosted/kept/` (the card
+"What the hub keeps") and `routes/devices/[id]/overview/` (the Overview of the hub). The tests prove each figure and each
+state with a fake hub and pushed batches in jsdom. No test reached a hub of the pool, no person saw the screens in a window,
+and the design was approved overnight by the orchestrator only.
+
+1. Open the Devices page of a hosted hub whose own daemon runs (HT-093), in the list view. Wait 10 seconds.
+   Expected: the row Hub shows its CPU in percent and its memory as used of its limit, for example "0.8 of 2.0 GiB", in the
+   places of the memory and the disk; it shows no disk. Its Connect column has no button: no SSH, RDP, VNC and no
+   "Set up screen sharing". The other rows are as before.
+2. Point at the CPU and at the memory of the row Hub.
+   Expected: the tooltip of the CPU says that it is the share of the processors that the hub may use; the tooltip of the
+   memory names the limit of the hub. The limit is the memory limit of the container of the hub in the pool (for a hub of
+   the plan of today, as the pool session gives it).
+3. Switch to the grid view.
+   Expected: the tile Hub has two meters, CPU and Memory, with "0.8 of 2.0 GiB" in the memory; no disk and no button.
+4. Open the row Hub, tab Overview, at 1280 px in the dark and the light appearance.
+   Expected: the bars show CPU and the memory as used of its limit, with no disk; there is no card Storage and no card of the SSH host key. The CPU bar has the note "of its processors". The side column
+   has the cards Connect (no session reaches the container of the hub), Plan and usage (HT-092) and "What the hub
+   keeps" with the count of the devices, the count of the checks and the days of history ("30 days of metrics, 90 days of
+   check results", or the values set in Settings, Data retention). The counts agree with the Devices page.
+5. Open the Overview of a device that is not the hub.
+   Expected: its bars have CPU, memory and disk in percent, as before; no card "What the hub keeps".
+6. Compare the list and the Overview with the mockups devices-v2 (the row Hub) and device-overview-v2 (Frame 3) and their
+   records.
+   Expected: the place and the order of each part agree, with the differences in the records only.
 
 Result: Open.
 
@@ -3145,7 +3237,7 @@ with real projects, in a desktop window or on a phone.
 
 Result: Open.
 
-### HT-NEW-threadsscroll: the list and the thread scroll on their own (THR-013, THR-014)
+### HT-100: the list and the thread scroll on their own (THR-013, THR-014)
 
 Built on the branch `threads/scroll`, in `apps/client/src/lib/agent-threads` (`ThreadsScreen.svelte`, `ThreadList.svelte`,
 `ThreadView.svelte`) and `apps/client/src/lib/scroll/room.ts`. The tests run in jsdom, which does not lay out a page: they

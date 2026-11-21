@@ -6,6 +6,7 @@
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
   import DeviceActions from '$lib/devices/actions/DeviceActions.svelte';
+  import { isHubDevice } from '$lib/devices/actions/actions';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import { press } from '$lib/motion/roles/press';
   import { listRow } from '$lib/motion/roles/transitions';
@@ -17,6 +18,9 @@
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import { hostLine, shortHost } from './card';
   import Meters from '../list/Meters.svelte';
+  import { batteryBar } from '$lib/metrics/battery/battery';
+  import type { LiveCharges } from '$lib/metrics/battery/charges.svelte';
+  import type { LiveMemory } from '$lib/metrics/container/memory.svelte';
   import { hasLiveUsage, listItems, reasonOf, UNGROUPED } from '../list/look';
   import type { ListQuery } from '../query';
   import { HeldOrder } from '../list/held.svelte';
@@ -31,9 +35,15 @@
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
     wake?: WakeApi;
     screenSharing?: CardScreenSharing;
+    /** The latest charge of each battery of each device (MET-032). */
+    charges?: Pick<LiveCharges, 'of'>;
+    /** The bytes of memory in use of the hub's own device (HMD-073). */
+    memory?: Pick<LiveMemory, 'of'>;
   }
 
-  const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
+  const { devices, beats, query = UNGROUPED, onConnect, onOpenWeb, wake, screenSharing, charges, memory }: Props = $props();
+  /** The usage column has a fourth slot, the battery, only when a device of the list has one (MET-032). */
+  const withBattery = $derived(devices.some((device) => device.batteries.length > 0));
   const held = new HeldOrder<CardDevice>(
     () => listItems(devices, query),
     () => `${query.sort} ${query.statuses.join(',')}`,
@@ -46,7 +56,7 @@
      under their own group title. A problem has its reason and how long under its status; the usage has one form in each
      row. Below 1100 px each device takes two lines. -->
 <div class="device-list" {@attach held.hold}>
-  <table class="device-rows">
+  <table class="device-rows" class:with-battery={withBattery}>
     <caption class="caption">Devices</caption>
     <thead>
       <tr>
@@ -54,7 +64,9 @@
         <th scope="col" class="c-status">Status</th>
         <th scope="col" class="c-uptime">24 h</th>
         <th scope="col" class="c-beats">Last 50 checks</th>
-        <th scope="col" class="c-detail" aria-label="Usage: CPU, memory, disk"><span class="usage-heads"><span>CPU</span><span>Memory</span><span>Disk</span></span></th>
+        <th scope="col" class="c-detail" aria-label={withBattery ? 'Usage: CPU, memory, disk, battery' : 'Usage: CPU, memory, disk'}
+          ><span class="usage-heads"><span>CPU</span><span>Memory</span><span>Disk</span>{#if withBattery}<span>Battery</span>{/if}</span></th
+        >
         <th scope="col" class="c-connect">Connect</th>
       </tr>
     </thead>
@@ -100,7 +112,11 @@
             <td class="c-beats">{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
             <td class="c-detail">
               {#if hasLiveUsage(device.status)}
-                <Meters readings={device.readings ?? null} source={device.metricsSource} compact />
+                <Meters readings={device.readings ?? null} source={device.metricsSource} compact
+                  battery={batteryBar(device.batteries, charges?.of(device.id))}
+                  container={isHubDevice(device)}
+                  memoryBytes={memory?.of(device.id) ?? null}
+                />
               {:else}
                 {#if reason !== null}<span class="narrow-reason" title={reason.text}>{reason.text}</span>{/if}
                 <span class="no-usage" title="No reading while the device is {device.status === 'DOWN' ? 'down' : 'unknown'}">—</span>
