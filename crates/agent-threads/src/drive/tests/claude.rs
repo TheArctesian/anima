@@ -87,13 +87,18 @@ fn a_claude_answer_sends_back_the_input_and_only_an_offered_rule() {
         allow["response"]["response"]["updatedInput"]["command"],
         "mkdir d10"
     );
+    assert_eq!(
+        request.offered.len(),
+        1,
+        "the rule for the settings file is not offered"
+    );
     let session =
-        line(&ClaudeInput::answer(&request, &Answer::AllowForSession { rule: 1 }).expect("fits"));
+        line(&ClaudeInput::answer(&request, &Answer::AllowForSession { rule: 0 }).expect("fits"));
     assert_eq!(
         session["response"]["response"]["updatedPermissions"][0]["mode"],
         "acceptEdits"
     );
-    assert!(ClaudeInput::answer(&request, &Answer::AllowForSession { rule: 2 }).is_err());
+    assert!(ClaudeInput::answer(&request, &Answer::AllowForSession { rule: 1 }).is_err());
     let choose = Answer::Choose {
         answers: vec![("Red?".into(), "Red".into())],
     };

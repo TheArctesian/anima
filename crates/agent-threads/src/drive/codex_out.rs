@@ -49,6 +49,12 @@ impl CodexDecoder {
             return vec![unknown("a line that is not JSON", true)];
         };
         let id = value.get("id").and_then(ProgramRequestId::from_json);
+        if value.get("id").is_some_and(|given| !given.is_null()) && id.is_none() {
+            return vec![unknown(
+                "an ID that is not a string or a whole number",
+                true,
+            )];
+        }
         match (value["method"].as_str(), id) {
             (Some(method), Some(id)) => vec![self.server_request(method, id, &value["params"])],
             (Some(method), None) => self.notification(method, &value["params"]),
@@ -187,7 +193,9 @@ impl CodexDecoder {
             .as_array()
             .map_or(&[][..], Vec::as_slice)
             .iter()
-            .filter(|decision| !matches!(decision.as_str(), Some("accept" | "decline" | "cancel")))
+            // Only the decision for this session: an amendment of the exec policy is a rule that
+            // stays after the thread (THR-030).
+            .filter(|decision| decision.as_str() == Some("acceptForSession"))
             .cloned()
             .collect();
         DriveEvent::Request(Request {
@@ -264,12 +272,24 @@ fn questions(list: &Value) -> Vec<Question> {
         .collect()
 }
 
+/// The answer to a call of the runner. Only the IDs of the thread and of the turn are kept, and
+/// of an error its code and message: the answer to `initialize` names the home folder and the
+/// answer to `account/read` the account, and neither goes into an event (THR-051, OD-THR43).
 fn reply(id: ProgramRequestId, value: &Value) -> DriveEvent {
     let ok = value.get("error").is_none();
     let result = if ok {
-        value["result"].clone()
+        let mut kept = serde_json::Map::new();
+        for key in ["thread", "turn"] {
+            if let Some(given) = value["result"][key]["id"].as_str() {
+                kept.insert(key.to_owned(), serde_json::json!({"id": given}));
+            }
+        }
+        Value::Object(kept)
     } else {
-        value["error"].clone()
+        serde_json::json!({
+            "code": value["error"]["code"],
+            "message": held(&text_of(&value["error"]["message"]), 1024),
+        })
     };
     DriveEvent::Reply { id, ok, result }
 }

@@ -39,7 +39,10 @@ impl ClaudeInput {
             }),
             Answer::Deny { message } => json!({"behavior": "deny", "message": message}),
             Answer::Choose { answers } => {
-                let mut input = request.input.clone();
+                let mut input = match &request.input {
+                    Value::Object(_) => request.input.clone(),
+                    _ => Value::Object(serde_json::Map::new()),
+                };
                 let chosen: serde_json::Map<String, Value> = answers
                     .iter()
                     .map(|(key, choice)| (key.clone(), Value::from(choice.as_str())))
