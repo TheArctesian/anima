@@ -171,7 +171,8 @@
 
   .fold:focus-visible {
     outline: var(--border-focus) solid var(--focus-ring);
-    outline-offset: var(--space-1);
+    /* Inside the ring, so the scroll area of the list does not cut it. */
+    outline-offset: calc(var(--border-focus) * -1);
   }
 
   .state {

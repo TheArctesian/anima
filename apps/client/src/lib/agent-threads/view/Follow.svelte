@@ -33,6 +33,21 @@
     following = true;
   });
 
+  // A pane or a content that changes its size (a window, a tool call or reasoning opened, a taller composer) keeps a
+  // reader at the end.
+  $effect(() => {
+    const node = scroller;
+    if (node === undefined || typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(() => {
+      if (following) node.scrollTop = node.scrollHeight;
+    });
+    observer.observe(node);
+    if (node.firstElementChild !== null) observer.observe(node.firstElementChild);
+    return () => {
+      observer.disconnect();
+    };
+  });
+
   $effect(() => {
     void grows;
     if (following) void toEnd();
@@ -44,7 +59,7 @@
 <div class="pane">
   <!-- The thread scrolls on its own; it is reachable by keyboard so it can be read (WCAG 2.1.1). -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <div class="scroll" tabindex="0" aria-label="Thread content" bind:this={scroller} onscroll={scrolled}>
+  <div class="scroll" role="region" tabindex="0" aria-label="Thread content" data-own-keys bind:this={scroller} onscroll={scrolled}>
     {@render children()}
   </div>
   {#if !following}
@@ -53,7 +68,7 @@
         size="sm"
         onclick={() => {
           following = true;
-          void toEnd();
+          void toEnd().then(() => scroller?.focus({ preventScroll: true }));
         }}>Newest</FormButton
       >
     </div>
