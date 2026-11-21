@@ -52,9 +52,31 @@ fn hosted_link() -> FakeLink {
 
 /// The parts of a hub in the hosted mode over `link`, with the cloud key in a file of `folder`.
 pub fn hosted_parts(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) -> Dependencies {
+    parts_of(
+        pool,
+        &hosted_env(link, folder),
+        Arc::new(FixedClock(start())),
+    )
+}
+
+/// The parts of a hub with the environment `env` and the clock `clock`.
+pub fn parts_of(
+    pool: &PgPool,
+    env: &BTreeMap<String, String>,
+    clock: Arc<dyn Clock>,
+) -> Dependencies {
+    Dependencies {
+        config: Arc::new(config::from_env(env).unwrap()),
+        ..dependencies(pool, clock, Bus::new(16))
+    }
+}
+
+/// The environment of a hub in the hosted mode over `link`, with the cloud key in a file of
+/// `folder`, and no public origin: the pool did not give one.
+pub fn hosted_env(link: &FakeLink, folder: &tempfile::TempDir) -> BTreeMap<String, String> {
     let key_file = folder.path().join("cloud_key");
     std::fs::write(&key_file, format!("{CLOUD_KEY}\n")).unwrap();
-    let env = BTreeMap::from([
+    BTreeMap::from([
         (
             "ANIMA_LINK_SOCKET".to_owned(),
             link.path.with_file_name("link.sock").display().to_string(),
@@ -67,12 +89,7 @@ pub fn hosted_parts(pool: &PgPool, link: &FakeLink, folder: &tempfile::TempDir) 
             "ANIMA_HOSTED_CLOUD_KEY_FILE".to_owned(),
             key_file.display().to_string(),
         ),
-    ]);
-    let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
-    Dependencies {
-        config: Arc::new(config::from_env(&env).unwrap()),
-        ..dependencies(pool, clock, Bus::new(16))
-    }
+    ])
 }
 
 /// One hosted hub, seen by the cloud (requests from this computer) and by the device `Studio`

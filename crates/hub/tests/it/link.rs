@@ -6,6 +6,7 @@ mod control;
 mod devices;
 mod hosted;
 mod hosted_browser;
+mod hosted_origin;
 mod hub_device;
 mod invites;
 mod presence;
