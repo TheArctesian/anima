@@ -21,6 +21,8 @@ mod push;
 mod readers;
 #[cfg(target_os = "linux")]
 mod renewal;
+#[cfg(unix)]
+mod threads;
 #[cfg(target_os = "linux")]
 mod token_store;
 mod transport;

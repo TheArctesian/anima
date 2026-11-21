@@ -70,6 +70,9 @@ jobs:
           cache: false
       - name: Build the native installer and run the Windows gates
         shell: pwsh
+        env:
+          # A run started by hand is a proof run: the gates go on after a failure and list each one.
+          EVENT: ${{ github.event_name }}
         run: |
           $ErrorActionPreference = 'Stop'
           $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
@@ -82,10 +85,14 @@ jobs:
           $env:PATH = "$env:ANIMA_POSTGRES_TREE/bin;C:/msys64/mingw64/bin;$env:PATH"
           & bun deploy/bin/windows-command.ts cargo install cargo-nextest --locked
           if ($LASTEXITCODE -ne 0) { throw 'cargo-nextest installation failed' }
-          & bun run gates 2>&1 | Tee-Object -FilePath windows-gates.log
-          if ($LASTEXITCODE -ne 0) { throw 'Windows gates failed' }
+          $proof = $env:EVENT -eq 'workflow_dispatch'
+          $keepGoing = if ($proof) { @('--keep-going') } else { @() }
+          & bun run gates @keepGoing 2>&1 | Tee-Object -FilePath windows-gates.log
+          $gates = $LASTEXITCODE
+          if ($gates -ne 0 -and -not $proof) { throw 'Windows gates failed' }
           & bun deploy/bin/windows-command.ts cargo test -p anima-app --lib start_menu_environment_builds_with_the_discovered_windows_compiler -- --ignored
           if ($LASTEXITCODE -ne 0) { throw 'Start-menu compiler discovery failed' }
+          if ($gates -ne 0) { throw 'Windows gates failed' }
       - id: digest
         name: Give the checked installer its stable name and digest
         shell: pwsh

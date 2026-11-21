@@ -18,6 +18,7 @@ mod codex_in;
 mod codex_out;
 mod launch;
 mod request;
+mod session_rule;
 #[cfg(test)]
 mod tests;
 
@@ -28,7 +29,7 @@ pub use codex_out::CodexDecoder;
 pub use launch::{Effort, Invocation, Launch, Mode, Model, Program, SessionStart};
 pub use request::{Answer, ProgramRequestId, Question, Request, RequestKind};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// The most bytes of one line of a program that a decoder reads; a longer line is
 /// [`DriveEvent::Unknown`] and stops the turn.
@@ -36,7 +37,7 @@ pub const MAX_LINE: usize = 16 * 1024 * 1024;
 
 /// What the program says it does now (THR-085: the structured stream is the second source of
 /// trust, after the end of the process).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProgramState {
     Working,
@@ -47,7 +48,7 @@ pub enum ProgramState {
 
 /// How a turn ended, from the end event of the program, never from its exit code (TH10: the
 /// exit code of `claude` is 0 after an interrupt).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TurnOutcome {
     Completed,
@@ -56,7 +57,7 @@ pub enum TurnOutcome {
 }
 
 /// One thing a program said, in the order it said it.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DriveEvent {
     /// The program named the session (Claude Code) or the thread (Codex). It comes again when
