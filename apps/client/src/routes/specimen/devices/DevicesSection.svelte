@@ -22,6 +22,7 @@
       name,
       host,
       ip: null,
+      kind: 'server',
       os: os as OperatingSystem,
       distribution,
       tags: [],

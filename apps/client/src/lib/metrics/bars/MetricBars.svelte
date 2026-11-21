@@ -4,6 +4,7 @@
   import { crossFade } from '$lib/motion/roles/transitions';
   import './geometry.css';
   import type { BatteryBar } from '../battery/battery';
+  import { containerRow } from '../container/container';
   import { barRow, type BarReadings } from './bars';
 
   interface Props {
@@ -11,11 +12,15 @@
     source: MetricsSource | null | undefined;
     /** The battery of a laptop, a phone or a tablet; `null` for a device with none (MET-032). */
     battery?: BatteryBar | null;
+    /** The hub's own device: CPU and memory of its container, the memory as used of its limit, no disk (HMD-073). */
+    container?: boolean;
+    /** The bytes of memory in use of the container; `null` before they are known. */
+    memoryBytes?: number | null;
   }
 
-  const { readings, source, battery = null }: Props = $props();
+  const { readings, source, battery = null, container = false, memoryBytes = null }: Props = $props();
   const preference = motionPreference();
-  const row = $derived(barRow(readings, source, battery));
+  const row = $derived(container ? containerRow(readings, source, memoryBytes) : barRow(readings, source, battery));
   /**
    * Two bars a line: a battery beside a GPU with its own memory takes a third line. It follows the device, not the
    * values of a batch, so the block keeps one size from the empty state on (MOT-007).
@@ -24,13 +29,13 @@
 </script>
 
 <!-- One block size for the bars and the empty state, so the row never changes size (MOT-007). -->
-<div class="row" class:empty={row.kind === 'empty'} class:three={lines === 3} class:reduced={preference.reduced}>
+<div class="row" class:container class:empty={row.kind === 'empty'} class:three={lines === 3} class:reduced={preference.reduced}>
   {#if row.kind === 'empty'}
     <p>{row.text}</p>
   {:else}
     {#each row.bars as bar (bar.key)}
       <div
-        class="bar"
+        class="bar {bar.key}"
         class:degraded={bar.degraded}
         role={bar.percent === null ? undefined : 'meter'}
         aria-label={bar.percent === null ? undefined : bar.label}
@@ -107,6 +112,11 @@
     display: inline-grid;
     justify-items: end;
     min-inline-size: calc(var(--space-8) + var(--space-1));
+  }
+
+  /* The memory of the hub, "0.8 of 2.0 GiB", has its own fixed width, so a new value moves nothing (MOT-007). */
+  .container .memory .slot {
+    min-inline-size: calc(var(--space-16) + var(--space-12));
   }
 
   .value {

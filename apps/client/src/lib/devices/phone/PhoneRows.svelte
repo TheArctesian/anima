@@ -8,7 +8,7 @@
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import { listRow } from '$lib/motion/roles/transitions';
   import type { SessionProtocol } from '$lib/sessions/tabs';
-  import { connectLabel, connectProtocols } from '../actions/actions';
+  import { connectLabel, connectProtocols, hasWaysIn } from '../actions/actions';
   import { hostLine, statusLabel } from '../card/card';
   import { listItems, reasonOf, UNGROUPED, type ListEntry } from '../list/look';
   import type { ListQuery } from '../query';
@@ -39,7 +39,7 @@
         <h2 class="group">{item.title}<span class="count">{item.count}</span></h2>
       {:else}
         {@const device = item.device}
-        {@const protocol = connectProtocols(device)[0]}
+        {@const protocol = hasWaysIn(device) ? connectProtocols(device)[0] : undefined}
         {@const reason = device.status === 'UP' ? null : reasonOf(device, beats.get(device.id), Date.now())}
         <div class="dev" role="listitem" data-edge={device.status === 'UP' ? undefined : device.status.toLowerCase()}>
           <a class="what" href="{resolve('/devices')}/{encodeURIComponent(device.id)}" tabindex="0" data-device-id={device.id} {@attach press()}>

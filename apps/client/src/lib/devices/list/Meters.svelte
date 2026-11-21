@@ -4,6 +4,7 @@
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { barRow, type Bar, type BarReadings } from '$lib/metrics/bars/bars';
   import type { BatteryBar } from '$lib/metrics/battery/battery';
+  import { containerRow } from '$lib/metrics/container/container';
   import { motionPreference } from '$lib/motion/preference';
   import { crossFade } from '$lib/motion/roles/transitions';
 
@@ -14,11 +15,15 @@
     compact?: boolean;
     /** The battery of a laptop, a phone or a tablet; `null` for a device with none (MET-032). */
     battery?: BatteryBar | null;
+    /** The hub's own device: CPU and memory of its container, the memory as used of its limit, no disk (HMD-073). */
+    container?: boolean;
+    /** The bytes of memory in use of the container; `null` before they are known. */
+    memoryBytes?: number | null;
   }
 
-  const { readings, source, compact = false, battery = null }: Props = $props();
+  const { readings, source, compact = false, battery = null, container = false, memoryBytes = null }: Props = $props();
   const preference = motionPreference();
-  const row = $derived(barRow(readings, source, battery));
+  const row = $derived(container ? containerRow(readings, source, memoryBytes) : barRow(readings, source, battery));
   /** Carbon has no RAM or GPU icon; these are the closest (D18). */
   const ICONS: Record<Bar['key'], IconName> = {
     cpu: 'carbon:chip',
@@ -41,7 +46,7 @@
 {#if row.kind === 'empty'}
   <span class="none">{row.text}</span>
 {:else}
-  <span class="meters" class:compact class:reduced={preference.reduced}>
+  <span class="meters" class:compact class:container class:reduced={preference.reduced}>
     {#each row.bars as bar (bar.key)}
       <span
         class="meter {bar.key}"
@@ -170,6 +175,16 @@
   /* The list has no word over each value: the battery's own shape stands before its value there. */
   .mark {
     display: none;
+  }
+
+  /* The hub's memory, "0.8 of 2.0 GiB", takes the slots of the memory and of the disk, which the hub has none of (HMD-072). */
+  .compact.container .memory {
+    grid-column: span 2;
+  }
+
+  /* "310 of 512 MiB" stays on one line, so the row keeps its one height (MOT-007). */
+  .container .memory .value {
+    white-space: nowrap;
   }
 
   .compact .battery .value {

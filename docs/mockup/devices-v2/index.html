@@ -360,7 +360,7 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
 </head>
 <body>
 <h1 class="board">Devices v2</h1>
-<p class="about">The Devices page after the interface review of 2026-11-19 (R-224). The name leads each row; a laptop has its battery after Disk, and that column is there only when a device of the list has one; the status and, for a device that needs a look, its reason come next. Each way in is a button with the name of its protocol. The logs are one line at the foot with the newest event; the line opens the panel. The foot of the bar names the hub. The field "Search or jump to" is not drawn: it has no plan row yet.</p>
+<p class="about">The Devices page after the interface review of 2026-11-19 (R-224). The name leads each row; a laptop has its battery after Disk, and that column is there only when a device of the list has one; the status and, for a device that needs a look, its reason come next. Each way in is a button with the name of its protocol. The logs are one line at the foot with the newest event; the line opens the panel. The foot of the bar names the hub. The row Hub, the own device of a hosted hub, offers no way in; its CPU is a share of the processors that the hub may use, and its memory, used of the limit of its container, takes the places of the memory and the disk, because the disk of the hub has no total (HMD-072, HMD-073). The field "Search or jump to" is not drawn: it has no plan row yet.</p>
 <figure>
 <div class="v2" data-theme="dark" style="width: 1280px; height: 900px;">
 <aside class="side">
@@ -379,9 +379,9 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body">
     <div class="toolbar">
       <div class="seg" role="group" aria-label="Show">
-        <button class="on" type="button">All <span class="n">12</span></button>
+        <button class="on" type="button">All <span class="n">13</span></button>
         <button type="button">Needs a look <span class="n">4</span></button>
-        <button type="button">Up <span class="n">8</span></button>
+        <button type="button">Up <span class="n">9</span></button>
       </div>
       <label class="field grow"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg><input placeholder="Filter by name, address or tag" aria-label="Filter devices"></label>
       <button class="btn quiet" type="button">Tags<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
@@ -410,7 +410,12 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <span class="why2"><span class="top"><span class="st unk">Unknown</span><span class="sec">since yesterday</span></span><a class="link" href="#" title="Resume checks">Every check is paused</a></span><span class="num r sec">—</span><span class="num r sec">—</span><span class="num r sec">—</span><span></span>
   <span class="num r">n/a</span><span class="beats unk" role="img" aria-label="Last 50 checks: 0 failed"></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>RDP</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
-      <li class="tr group"><span>Up</span><span class="num">8</span></li>
+      <li class="tr group"><span>Up</span><span class="num">9</span></li>
+      <li class="tr" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 56px 200px 104px">
+  <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>Hub</b><span class="mono sec">container</span></span></span>
+  <span class="st up">Up</span><span class="num r" role="meter" aria-label="CPU" aria-valuetext="4 %" title="CPU: the share of the processors that the hub may use">4%</span><span class="num r" style="grid-column: span 2" role="meter" aria-label="Memory" aria-valuetext="0.8 of 2.0 GiB, 40 %" title="Memory: 0.8 of 2.0 GiB, the limit of the hub">0.8 of 2.0 GiB</span><span></span>
+  <span class="num r">100%</span><span class="beats" role="img" aria-label="Last 50 checks: no checks"></span><span class="end"></span>
+</li>
       <li class="tr" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>atlas</b><span class="mono sec">atlas.lan</span></span></span>
   <span class="st up">Up</span><span class="num r">12%</span><span class="num r">41%</span><span class="num r">38%</span><span></span>
@@ -482,9 +487,9 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <div class="body">
     <div class="toolbar">
       <div class="seg" role="group" aria-label="Show">
-        <button class="on" type="button">All <span class="n">12</span></button>
+        <button class="on" type="button">All <span class="n">13</span></button>
         <button type="button">Needs a look <span class="n">4</span></button>
-        <button type="button">Up <span class="n">8</span></button>
+        <button type="button">Up <span class="n">9</span></button>
       </div>
       <label class="field grow"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg><input placeholder="Filter by name, address or tag" aria-label="Filter devices"></label>
       <button class="btn quiet" type="button">Tags<svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button>
@@ -513,7 +518,12 @@ figcaption { margin-top: 6px; font-size: 12px; color: #A4A8B0; max-width: 90ch; 
   <span class="why2"><span class="top"><span class="st unk">Unknown</span><span class="sec">since yesterday</span></span><a class="link" href="#" title="Resume checks">Every check is paused</a></span><span class="num r sec">—</span><span class="num r sec">—</span><span class="num r sec">—</span><span></span>
   <span class="num r">n/a</span><span class="beats unk" role="img" aria-label="Last 50 checks: 0 failed"></span><span class="end"><button class="btn sm" type="button"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M4.5 6.5L6.5 8l-2 1.5M8 9.5h3"/></svg>RDP</button><button class="btn sm icon quiet" type="button" aria-label="More ways to connect"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></button></span>
 </li>
-      <li class="tr group"><span>Up</span><span class="num">8</span></li>
+      <li class="tr group"><span>Up</span><span class="num">9</span></li>
+      <li class="tr" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 56px 200px 104px">
+  <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>Hub</b><span class="mono sec">container</span></span></span>
+  <span class="st up">Up</span><span class="num r" role="meter" aria-label="CPU" aria-valuetext="4 %" title="CPU: the share of the processors that the hub may use">4%</span><span class="num r" style="grid-column: span 2" role="meter" aria-label="Memory" aria-valuetext="0.8 of 2.0 GiB, 40 %" title="Memory: 0.8 of 2.0 GiB, the limit of the hub">0.8 of 2.0 GiB</span><span></span>
+  <span class="num r">100%</span><span class="beats" role="img" aria-label="Last 50 checks: no checks"></span><span class="end"></span>
+</li>
       <li class="tr" style="grid-template-columns: 200px minmax(0, 1fr) 40px 40px 40px 56px 56px 200px 104px">
   <span class="name"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="4.5" rx="1"/><rect x="2" y="9" width="12" height="4.5" rx="1"/><path d="M4.5 4.75h.01M4.5 11.25h.01"/></svg><span class="cell2"><b>atlas</b><span class="mono sec">atlas.lan</span></span></span>
   <span class="st up">Up</span><span class="num r">12%</span><span class="num r">41%</span><span class="num r">38%</span><span></span>
