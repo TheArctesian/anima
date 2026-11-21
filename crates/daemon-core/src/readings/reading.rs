@@ -1,6 +1,6 @@
 //! What one collection read from a device, before any rate is worked out.
 
-use super::Drive;
+use super::{Battery, Drive};
 
 /// CPU as the device reports it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -55,6 +55,15 @@ pub struct DriveCounters {
     pub busy_ms: u64,
 }
 
+/// The bytes of the data of a hosted hub (HMD-072): its database and its files, which it measures
+/// itself. It has no total: the file system that holds it is the one of the pool.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HubStorage {
+    /// The folder of the data, the label of its series: a path that starts with `/`.
+    pub folder: String,
+    pub bytes: u64,
+}
+
 /// Everything read in one collection. A field is empty when its command gave nothing usable.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Reading {
@@ -68,4 +77,9 @@ pub struct Reading {
     /// device without `lsblk`, a failed read), which is not the same as a device with none.
     pub drives: Option<Vec<Drive>>,
     pub drive_counters: Vec<DriveCounters>,
+    /// The data of a hosted hub (HMD-072); `None` on each other device.
+    pub hub_storage: Option<HubStorage>,
+    /// The batteries that power the device (MET-032); `None` when nothing could be read (the
+    /// container of a hosted hub, a failed read), which is not the same as a device with none.
+    pub batteries: Option<Vec<Battery>>,
 }

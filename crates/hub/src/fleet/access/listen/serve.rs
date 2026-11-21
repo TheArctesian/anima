@@ -8,6 +8,8 @@
 //! signal the loop stops accepting, asks every connection to finish its request and close,
 //! waits at most the drain limit, then aborts what is left (R-040).
 
+mod own_daemon;
+
 use std::{convert::Infallible, io, net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
@@ -75,6 +77,8 @@ const ACCEPT_PAUSE: Duration = Duration::from_secs(1);
 /// What every connection is served with.
 pub(super) struct Serving {
     router: Router,
+    /// `router` with only the routes of K8, for the hub's own daemon (HMD-071).
+    own_daemon_router: Router,
     edge: Edge,
     tls: Option<TlsAcceptor>,
     limits: Limits,
@@ -95,6 +99,7 @@ impl Serving {
         limits: Limits,
     ) -> Arc<Self> {
         Arc::new(Self {
+            own_daemon_router: own_daemon::daemon_routes_only(router.clone()),
             router,
             edge,
             tls,
@@ -191,7 +196,15 @@ impl Serving {
     where
         T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
-        let (router, limits) = (self.router.clone(), self.limits);
+        self.http_with(self.router.clone(), io, peer).await;
+    }
+
+    /// As [`Self::http`], with `router` in place of the router of the hub.
+    async fn http_with<T>(&self, router: Router, io: Holding<T>, peer: SocketAddr)
+    where
+        T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    {
+        let limits = self.limits;
         let service = service_fn(move |mut request: hyper::Request<Incoming>| {
             request.extensions_mut().insert(ConnectInfo(peer));
             let request = request.map(|body| timed_body(body, limits.body_time));
@@ -219,13 +232,15 @@ fn late() -> Response {
     StatusCode::SERVICE_UNAVAILABLE.into_response()
 }
 
-/// The ways in: the listener and, in the link mode, the link's socket.
+/// The ways in: the listener and, in the link mode, the link's socket; in the hosted mode
+/// also the socket of the hub's own daemon.
 pub(super) struct Ways {
     pub tcp: TcpListener,
     pub link: Option<LinkSocket>,
+    pub own_daemon: Option<LinkSocket>,
 }
 
-/// The next connection from the link; never, when the hub is not in the link mode.
+/// The next connection to `link`, a private socket; never, when there is none.
 async fn from_link(link: Option<&LinkSocket>) -> io::Result<FromLink> {
     match link {
         Some(link) => link.accept().await,
@@ -253,6 +268,10 @@ pub(super) async fn run(
             },
             incoming = from_link(ways.link.as_ref()) => match incoming {
                 Ok(incoming) => connections.extend([serving.admit_link(incoming)]),
+                Err(error) => accept_failed(&error).await,
+            },
+            incoming = from_link(ways.own_daemon.as_ref()) => match incoming {
+                Ok(incoming) => connections.extend([serving.admit_own_daemon(incoming)]),
                 Err(error) => accept_failed(&error).await,
             },
         }

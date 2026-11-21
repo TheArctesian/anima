@@ -33,9 +33,10 @@ pub use self::{
     },
     ssh::CredentialStored,
     standing::{
-        ChecksOf, DaemonVersionOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf,
-        SuggestionsOf, UptimeOf, WebInterfacesOf, daemon_version_loader, gpus_loader,
-        readings_loader, stale_loader, web_interface_suggestions_loader, web_interfaces_loader,
+        BatteriesOf, ChecksOf, DaemonVersionOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf,
+        StatusOf, SuggestionsOf, UptimeOf, WebInterfacesOf, batteries_loader,
+        daemon_version_loader, gpus_loader, readings_loader, stale_loader,
+        web_interface_suggestions_loader, web_interfaces_loader,
     },
 };
 
@@ -48,7 +49,7 @@ use self::{
     ssh::DeviceSsh,
 };
 use super::{
-    DevicesById, DevicesBySite, Error, FieldError, SitesById,
+    DevicesById, DevicesBySite, Error, FieldError, SitesById, hub_device,
     model::{Device, NewSiteInput, Site},
     rules::{validate_change, validate_new_device, validate_new_site},
     store,
@@ -215,6 +216,7 @@ impl Mutation {
         let add_default_check = input.add_default_check();
         let (form, bad_site) = input.into_form();
         let new = checked(validate_new_device(&form), bad_site)?;
+        hub_device::refuse_new(&new.kind).map_err(|refusal| invalid(&[refusal]))?;
         let trail = Trail::from_context(ctx)?;
         let id = DeviceId::from(Uuid::now_v7());
         let mut tx = begin(ctx).await?;
@@ -261,6 +263,9 @@ impl Mutation {
         }
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
+        hub_device::check_change(&mut *tx, id, &change)
+            .await
+            .map_err(to_graphql)?;
         let device = store::update_device(&mut tx, id, trail.now, &change)
             .await
             .map_err(to_graphql)?;

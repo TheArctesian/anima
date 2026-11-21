@@ -1,8 +1,10 @@
 //! The `devices` tool set: the fleet, devices, their metrics and capabilities, the use of their
-//! AI agent programs, their containers, the text of a Compose file, sites, wake, and the changes.
+//! AI agent programs, their containers, the text of a Compose file, the catalogue of
+//! applications, sites, wake, and the changes.
 
 mod agent_usage;
 mod capabilities;
+mod catalogue_entries;
 mod change;
 mod compose_file;
 mod containers;
@@ -30,6 +32,9 @@ pub enum DeviceTool {
     ContainerUpdates,
     ComposeCheck,
     ComposeFromRun,
+    CatalogueList,
+    CatalogueShow,
+    CatalogueInstall,
     Create,
     SiteCreate,
     Wake,
@@ -38,7 +43,7 @@ pub enum DeviceTool {
 }
 
 impl DeviceTool {
-    pub const ALL: [Self; 17] = [
+    pub const ALL: [Self; 20] = [
         Self::FleetOverview,
         Self::Search,
         Self::Get,
@@ -51,6 +56,9 @@ impl DeviceTool {
         Self::ContainerUpdates,
         Self::ComposeCheck,
         Self::ComposeFromRun,
+        Self::CatalogueList,
+        Self::CatalogueShow,
+        Self::CatalogueInstall,
         Self::Create,
         Self::SiteCreate,
         Self::Wake,
@@ -69,6 +77,9 @@ impl DeviceTool {
             | Self::ContainerNetworks
             | Self::ContainerUpdates => containers::definition_of(self),
             Self::ComposeCheck | Self::ComposeFromRun => compose_file::definition_of(self),
+            Self::CatalogueList | Self::CatalogueShow | Self::CatalogueInstall => {
+                catalogue_entries::definition_of(self)
+            }
             Self::FleetOverview | Self::Search | Self::Get => read::definition(self),
             other => change::definition(other),
         }
@@ -93,11 +104,10 @@ impl DeviceTool {
             Self::ComposeCheck | Self::ComposeFromRun => {
                 compose_file::call(self, hub, arguments).await
             }
-            Self::Create => change::create(hub, arguments).await,
-            Self::SiteCreate => change::site_create(hub, arguments).await,
-            Self::Wake => change::wake(hub, arguments).await,
-            Self::Update => change::update(hub, arguments).await,
-            Self::Delete => change::delete(hub, arguments).await,
+            Self::CatalogueList | Self::CatalogueShow | Self::CatalogueInstall => {
+                catalogue_entries::call(self, hub, arguments).await
+            }
+            other => change::call(other, hub, arguments).await,
         }
     }
 }

@@ -8,7 +8,7 @@ use crate::fleet::devices::Distribution;
 
 /// The distribution of the last `ID=` line of `os_release`; `None` when there is no such line
 /// or its value is not a valid distribution id.
-pub(super) fn distribution(os_release: &[u8]) -> Option<Distribution> {
+pub(in crate::fleet::metrics) fn distribution(os_release: &[u8]) -> Option<Distribution> {
     let value = os_release
         .split(|byte| *byte == b'\n')
         .filter_map(|line| line.trim_ascii().strip_prefix(b"ID="))
