@@ -13,7 +13,6 @@ pub mod projects;
 pub mod releases;
 pub mod repositories;
 pub mod retention;
-pub mod routes;
 pub mod sessions;
 pub mod shared_records;
 pub mod sources;
@@ -38,7 +37,7 @@ pub enum Tool {
     Sessions(sessions::SessionTool),
     Notifications(notifications::NotificationTool),
     Web(web::WebTool),
-    Routes(routes::RouteTool),
+    Routes(devices::routes::RouteTool),
     Releases(releases::ReleaseTool),
     Vpn(vpn::VpnTool),
     Retention(retention::RetentionTool),
@@ -69,7 +68,7 @@ impl Tool {
         tools.extend(sessions::SessionTool::ALL.map(Self::Sessions));
         tools.extend(notifications::NotificationTool::ALL.map(Self::Notifications));
         tools.extend(web::WebTool::ALL.map(Self::Web));
-        tools.extend(routes::RouteTool::ALL.map(Self::Routes));
+        tools.extend(devices::routes::RouteTool::ALL.map(Self::Routes));
         tools.extend(releases::ReleaseTool::ALL.map(Self::Releases));
         tools.extend(vpn::VpnTool::ALL.map(Self::Vpn));
         tools.extend(retention::RetentionTool::ALL.map(Self::Retention));

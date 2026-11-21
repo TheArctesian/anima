@@ -17,6 +17,7 @@ mod caa;
 mod door;
 mod names;
 mod proof;
+mod socket;
 mod store;
 mod support;
 mod target;

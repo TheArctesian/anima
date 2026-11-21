@@ -50,7 +50,7 @@ async fn main() -> ExitCode {
         plain = Some(listener);
     }
     let hub = HubSocket(settings.hub_socket.clone());
-    let Ok(proxy) = Proxy::new(hub, settings.limits, settings.door) else {
+    let Ok(proxy) = Proxy::new(hub, &settings) else {
         return ExitCode::FAILURE;
     };
     let proxy = Arc::new(proxy);

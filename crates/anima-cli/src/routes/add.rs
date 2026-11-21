@@ -17,12 +17,10 @@ pub struct AddArgs {
     /// The device's ID.
     #[arg(long)]
     device: String,
-    /// The port that the applications program recorded for the application.
+    /// The port of the application. The route serves only when the hub's record of the
+    /// application names this device and this port.
     #[arg(long)]
     port: i64,
-    /// The application holds the socket of the engine: the hub refuses it.
-    #[arg(long)]
-    holds_engine_socket: bool,
 }
 
 impl AddArgs {
@@ -41,7 +39,6 @@ impl AddArgs {
             application_id: self.application,
             device_id: self.device,
             port: self.port,
-            holds_engine_socket: self.holds_engine_socket,
         };
         let added = invocation
             .hub()?

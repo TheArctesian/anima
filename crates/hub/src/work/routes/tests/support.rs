@@ -65,7 +65,6 @@ pub fn new_route(name: &str, port: i64) -> NewRoute {
         application: application(),
         device: device(DOCKER_HOST),
         port,
-        holds_engine_socket: false,
     }
 }
 

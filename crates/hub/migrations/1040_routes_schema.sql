@@ -6,7 +6,9 @@
 -- a new route (SF-NEW-routetarget). The token of the proof is 256 random bits in hex, bound to
 -- the pair of this hub and the name (SF-NEW-routetoken). `machine_consent` is the second
 -- consent at the machine that OD-HOST-43 asks for: nothing can set it yet, so no route is
--- active (SF-NEW-routepublish). The private key of a certificate is sealed with the hub key and
+-- active (SF-NEW-routepublish). `application_recorded` says that the hub's record of the
+-- application names this device and this port and no socket of the engine: the hub has no such
+-- record before task H6, so nothing sets it and no route serves (SF-NEW-revroutetarget). The private key of a certificate is sealed with the hub key and
 -- bound to its route (SEC-003); nothing in these tables is a body of a request (LOG-007).
 -- Privileges: migration 0001's default privileges give `anima_runtime` what it needs on the
 -- new schema (K2 "Roles").
@@ -25,6 +27,7 @@ create table routes.route (
                          check (proof in ('waiting', 'proven', 'lost')),
     failed_reads     integer     not null default 0 check (failed_reads >= 0),
     machine_consent  boolean     not null default false,
+    application_recorded boolean not null default false,
     checked_at       timestamptz,
     issue_failures   integer     not null default 0 check (issue_failures >= 0),
     next_issue_at    timestamptz,

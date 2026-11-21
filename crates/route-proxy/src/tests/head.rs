@@ -75,7 +75,7 @@ fn a_smuggled_or_malformed_request_is_refused() {
 #[test]
 fn a_websocket_upgrade_keeps_its_connection_header() {
     let head = "GET /ws HTTP/1.1\r\nHost: photos.example.com\r\nConnection: Upgrade\r\n\
-                Upgrade: websocket\r\n\r\n";
+                Upgrade: websocket\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n";
     let client: IpAddr = CLIENT.parse().unwrap();
     let rewritten = rewrite(head.as_bytes(), "photos.example.com", client).unwrap();
     assert!(rewritten.upgrade);
@@ -84,4 +84,48 @@ fn a_websocket_upgrade_keeps_its_connection_header() {
             .unwrap()
             .ends_with("connection: upgrade\r\n\r\n")
     );
+}
+
+#[test]
+fn an_upgrade_without_its_key_is_a_plain_request() {
+    let head = "GET /ws HTTP/1.1\r\nHost: photos.example.com\r\nConnection: Upgrade\r\n\
+                Upgrade: websocket\r\n\r\n";
+    let client: IpAddr = CLIENT.parse().unwrap();
+    let rewritten = rewrite(head.as_bytes(), "photos.example.com", client).unwrap();
+    assert!(!rewritten.upgrade);
+    assert!(
+        String::from_utf8(rewritten.head)
+            .unwrap()
+            .ends_with("connection: close\r\n\r\n")
+    );
+}
+
+#[test]
+fn a_body_has_one_length_of_digits_and_never_with_a_transfer_encoding() {
+    let with = |headers: &str| {
+        written(&format!(
+            "POST / HTTP/1.1\r\nHost: photos.example.com\r\n{headers}\r\n"
+        ))
+    };
+    for refused in [
+        "Content-Length: 5\r\nContent-Length: 5\r\n",
+        "Content-Length: 5\r\nContent-Length: 6\r\n",
+        "Content-Length: +5\r\n",
+        "Content-Length: 5, 5\r\n",
+        "Content-Length: 0x5\r\n",
+        "Content-Length: \r\n",
+        "Transfer-Encoding: chunked\r\nContent-Length: 5\r\n",
+        "Content-Length: 5\r\nTransfer-Encoding: chunked\r\n",
+    ] {
+        assert_eq!(with(refused), Err(Status::BadRequest), "{refused}");
+    }
+    assert!(with("Content-Length: 5\r\n").is_ok());
+}
+
+#[test]
+fn a_header_name_with_an_underscore_is_refused() {
+    for name in ["X_Forwarded_For", "x_anima_account", "Content_Length"] {
+        let head = format!("GET / HTTP/1.1\r\nHost: photos.example.com\r\n{name}: 1\r\n\r\n");
+        assert_eq!(written(&head), Err(Status::BadRequest), "{name}");
+    }
 }

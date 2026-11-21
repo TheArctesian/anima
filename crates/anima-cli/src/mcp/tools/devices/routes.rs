@@ -38,8 +38,8 @@ pub struct GetInput {
 const ROUTE: &str = "id, name, applicationId, deviceId, port, proof (WAITING, PROVEN or LOST), \
                      failedReads, proofRecordName and proofRecordValue (the TXT record that \
                      proves the name), machineConsent, certificateNotAfter, waitsFor (PROOF, \
-                     MACHINE_CONSENT, CERTIFICATE; null when it serves), checkedAt, requests, \
-                     bytesIn, bytesOut, refused, createdAt.";
+                     MACHINE_CONSENT, APPLICATION_RECORD, CERTIFICATE; null when it serves), \
+                     checkedAt, requests, bytesIn, bytesOut, refused, createdAt.";
 
 impl RouteTool {
     pub const ALL: [Self; 2] = [Self::List, Self::Get];

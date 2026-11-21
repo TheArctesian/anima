@@ -4,8 +4,10 @@
 //! A route is one name of one application with a target that is fixed when the name is added:
 //! the device, the port that the applications program recorded and the address resolved then
 //! (SF-NEW-routetarget). A route serves only when its name is proven (Section 12.4), the second
-//! consent at the machine is given (OD-HOST-43; nothing can give it yet) and it has a valid
-//! certificate (Section 12.5). The proxy is a process apart from the hub; it reaches an
+//! consent at the machine is given (OD-HOST-43; nothing can give it yet), the hub's record of the
+//! application confirms the device and the port and names no socket of the engine (task H6; the
+//! hub has no such record yet, SF-NEW-revroutetarget) and it has a valid certificate
+//! (Section 12.5). The proxy is a process apart from the hub; it reaches an
 //! application only through [`door`], which takes the identifier of an application and never a
 //! device or a port (SF-NEW-routeproxyexit). Messages in [`Error`] hold no secret (LOG-007).
 
@@ -57,8 +59,6 @@ pub enum Error {
     Name(#[from] NameRefusal),
     #[error(transparent)]
     Target(#[from] TargetRefusal),
-    #[error("an application that holds the socket of the engine is never made public")]
-    EngineSocket,
     #[error("a route already has this name")]
     NameTaken,
     #[error("the application already has routes to a different device or port")]
@@ -151,9 +151,6 @@ pub async fn add(
     now: DateTime<Utc>,
 ) -> Result<Added, Error> {
     let name = RouteName::parse(&new.name, &settings.names)?;
-    if new.holds_engine_socket {
-        return Err(Error::EngineSocket);
-    }
     let port = target::check_port(new.port)?;
     let device = devices::get(db, new.device)
         .await
@@ -180,6 +177,7 @@ pub async fn add(
         proof: proof::Proof::Waiting,
         failed_reads: 0,
         machine_consent: false,
+        application_recorded: false,
         checked_at: None,
         certificate: None,
         traffic: Traffic::default(),

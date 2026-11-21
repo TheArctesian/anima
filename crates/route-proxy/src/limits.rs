@@ -1,8 +1,136 @@
-//! The limits of each name (Section 12.7): connections at one time, new connections each
-//! second, and bytes in each period. The numbers are parameters: the operator decides them with
-//! the prices (OD-HOST-40). Time is a parameter too, in milliseconds from any fixed start. Pure.
+//! The limits of the proxy. Before a name is known: the connections open in all and for each
+//! client address, and the times that a connection may take (SF-NEW-revroutelimits). For each
+//! name (Section 12.7): connections at one time, new connections each second, and bytes in each
+//! period. The numbers are parameters: the operator decides them with the prices (OD-HOST-40).
+//! Time is a parameter too, in milliseconds from any fixed start. No I/O.
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    net::IpAddr,
+    sync::{Arc, Mutex, PoisonError},
+    time::Duration,
+};
+
+/// The times after which the proxy ends a connection that does not go on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Timeouts {
+    /// From the accept to the end of the TLS handshake, the PROXY header of the door included.
+    pub handshake: Duration,
+    /// For the whole head of a request.
+    pub head: Duration,
+    /// With no byte in either direction on one stream.
+    pub idle: Duration,
+}
+
+impl Default for Timeouts {
+    fn default() -> Self {
+        Self {
+            handshake: Duration::from_secs(10),
+            head: Duration::from_secs(10),
+            idle: Duration::from_secs(300),
+        }
+    }
+}
+
+/// The connections that one listener keeps open before it knows a name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Caps {
+    /// In all.
+    pub total: u32,
+    /// For each client address.
+    pub per_client: u32,
+}
+
+/// The connections open now on one listener, in all and for each client address.
+#[derive(Debug)]
+pub struct Gate {
+    caps: Caps,
+    total: u32,
+    clients: HashMap<IpAddr, u32>,
+}
+
+impl Gate {
+    #[must_use]
+    pub fn new(caps: Caps) -> Self {
+        Self {
+            caps,
+            total: 0,
+            clients: HashMap::new(),
+        }
+    }
+
+    /// Admits one more connection in all; `false` at the cap.
+    pub fn enter(&mut self) -> bool {
+        if self.total >= self.caps.total {
+            return false;
+        }
+        self.total += 1;
+        true
+    }
+
+    /// A connection that [`Gate::enter`] admitted ended.
+    pub fn leave(&mut self) {
+        self.total = self.total.saturating_sub(1);
+    }
+
+    /// Admits one more connection of `client`; `false` at its cap.
+    pub fn enter_client(&mut self, client: IpAddr) -> bool {
+        let open = self.clients.entry(client).or_default();
+        if *open >= self.caps.per_client {
+            return false;
+        }
+        *open += 1;
+        true
+    }
+
+    /// A connection that [`Gate::enter_client`] admitted ended.
+    pub fn leave_client(&mut self, client: IpAddr) {
+        if let Some(open) = self.clients.get_mut(&client) {
+            *open = open.saturating_sub(1);
+            if *open == 0 {
+                self.clients.remove(&client);
+            }
+        }
+    }
+}
+
+/// One place under a [`Gate`] until it is dropped: in all, and for its client once known.
+pub struct Pass {
+    gate: Arc<Mutex<Gate>>,
+    client: Option<IpAddr>,
+}
+
+impl Pass {
+    /// A place in all; `None` at the cap.
+    #[must_use]
+    pub fn enter(gate: &Arc<Mutex<Gate>>) -> Option<Self> {
+        let entered = gate.lock().unwrap_or_else(PoisonError::into_inner).enter();
+        entered.then(|| Self {
+            gate: Arc::clone(gate),
+            client: None,
+        })
+    }
+
+    /// Takes a place for `client`; `false` at its cap.
+    pub fn admit(&mut self, client: IpAddr) -> bool {
+        let mut gate = self.gate.lock().unwrap_or_else(PoisonError::into_inner);
+        let admitted = gate.enter_client(client);
+        if admitted {
+            self.client = Some(client);
+        }
+        admitted
+    }
+}
+
+impl Drop for Pass {
+    fn drop(&mut self) {
+        let mut gate = self.gate.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(client) = self.client {
+            gate.leave_client(client);
+        }
+        gate.leave();
+    }
+}
 
 /// The limits of one name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

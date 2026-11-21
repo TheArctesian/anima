@@ -1,6 +1,7 @@
 //! The listeners of the proxy: TLS for the names that serve, and plain HTTP for the ACME
-//! challenge and the redirect (Section 12.2 and 12.3). Each connection is counted and limited
-//! for its name. The log has only the name, the bytes, the status and the time: never a path, a
+//! challenge and the redirect (Section 12.2 and 12.3). Each listener caps its connections in all
+//! and for each client before the TLS handshake, and each step has a time limit
+//! (SF-NEW-revroutelimits). Each connection is counted and limited for its name. The log has only the name, the bytes, the status and the time: never a path, a
 //! query, a header or a cookie (LOG-007, SF-NEW-routeheaders). I/O edge.
 
 use std::{
@@ -14,6 +15,7 @@ use rustls::ServerConfig;
 use tokio::{
     io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _},
     net::{TcpListener, TcpStream},
+    time::timeout,
 };
 use tokio_rustls::TlsAcceptor;
 use uuid::Uuid;
@@ -22,9 +24,10 @@ use crate::{
     door_header,
     head::{self, HEAD_MAX, Status},
     hub::Hub,
-    limits::{Limiter, Limits},
+    limits::{Gate, Limiter, Pass, Timeouts},
     plain,
-    relay::relay,
+    relay::{Idle, relay},
+    settings::Settings,
     tls,
     wire::Counts,
 };
@@ -45,6 +48,9 @@ pub struct Proxy<H: Hub> {
     names: RwLock<HashMap<String, Uuid>>,
     challenges: RwLock<HashMap<String, String>>,
     limiter: Mutex<Limiter>,
+    timeouts: Timeouts,
+    tls_gate: Arc<Mutex<Gate>>,
+    plain_gate: Arc<Mutex<Gate>>,
     counts: Mutex<HashMap<String, Counts>>,
     started: Instant,
 }
@@ -54,15 +60,18 @@ impl<H: Hub> Proxy<H> {
     ///
     /// # Errors
     /// When the TLS library has no safe default.
-    pub fn new(hub: H, limits: Limits, door: bool) -> Result<Self, rustls::Error> {
+    pub fn new(hub: H, settings: &Settings) -> Result<Self, rustls::Error> {
         let (config, _) = tls::server_config(&crate::wire::Table::default())?;
         Ok(Self {
             hub,
-            door,
+            door: settings.door,
             tls: RwLock::new(config),
             names: RwLock::default(),
             challenges: RwLock::default(),
-            limiter: Mutex::new(Limiter::new(limits)),
+            limiter: Mutex::new(Limiter::new(settings.limits)),
+            timeouts: settings.timeouts,
+            tls_gate: Arc::new(Mutex::new(Gate::new(settings.tls_caps))),
+            plain_gate: Arc::new(Mutex::new(Gate::new(settings.plain_caps))),
             counts: Mutex::default(),
             started: Instant::now(),
         })
@@ -117,66 +126,94 @@ impl<H: Hub> Proxy<H> {
     }
 }
 
-/// Serves TLS on `listener` until the task is stopped.
+/// Serves TLS on `listener` until the task is stopped. A connection over the cap is closed
+/// before any byte is read.
 pub async fn serve_tls<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener) {
     loop {
         let Ok((stream, peer)) = listener.accept().await else {
             continue;
         };
+        let Some(pass) = Pass::enter(&proxy.tls_gate) else {
+            continue;
+        };
         let proxy = Arc::clone(&proxy);
-        tokio::spawn(async move { one_tls(&proxy, stream, peer.ip()).await });
+        tokio::spawn(async move { one_tls(&proxy, stream, peer.ip(), pass).await });
     }
 }
 
 /// Serves plain HTTP on `listener` until the task is stopped.
 pub async fn serve_plain<H: Hub>(proxy: Arc<Proxy<H>>, listener: TcpListener) {
     loop {
-        let Ok((mut stream, _)) = listener.accept().await else {
+        let Ok((stream, peer)) = listener.accept().await else {
+            continue;
+        };
+        let Some(pass) = Pass::enter(&proxy.plain_gate) else {
             continue;
         };
         let proxy = Arc::clone(&proxy);
-        tokio::spawn(async move {
-            if proxy.door && client_of_door(&mut stream).await.is_none() {
-                return;
-            }
-            let Ok((head, _)) = read_head(&mut stream).await else {
-                return;
-            };
-            let Some((host, target)) = plain::host_and_target(&head) else {
-                return;
-            };
-            let names: Vec<String> = (proxy.names.read().unwrap_or_else(PoisonError::into_inner))
-                .keys()
-                .cloned()
-                .collect();
-            let challenges = proxy
-                .challenges
-                .read()
-                .unwrap_or_else(PoisonError::into_inner)
-                .clone();
-            let answer = plain::answer(&host, &target, &names, &challenges);
-            stream.write_all(&answer).await.ok();
-        });
+        tokio::spawn(async move { one_plain(&proxy, stream, peer.ip(), pass).await });
     }
 }
 
-/// One TLS connection: the name of its SNI, its limits, its request and its answer.
-async fn one_tls<H: Hub>(proxy: &Proxy<H>, mut stream: TcpStream, peer: IpAddr) {
-    let client = if proxy.door {
-        match client_of_door(&mut stream).await {
-            Some(client) => client,
-            None => return,
-        }
-    } else {
-        peer
+/// One plain connection: the challenge or the redirect, each step within its time.
+async fn one_plain<H: Hub>(proxy: &Proxy<H>, mut stream: TcpStream, peer: IpAddr, mut pass: Pass) {
+    let times = proxy.timeouts;
+    let Some(client) = client(proxy, &mut stream, peer).await else {
+        return;
     };
+    if !pass.admit(client) {
+        return;
+    }
+    let Ok(Ok((head, _))) = timeout(times.head, read_head(&mut stream)).await else {
+        return;
+    };
+    let Some((host, target)) = plain::host_and_target(&head) else {
+        return;
+    };
+    let names: Vec<String> = (proxy.names.read().unwrap_or_else(PoisonError::into_inner))
+        .keys()
+        .cloned()
+        .collect();
+    let challenges = proxy
+        .challenges
+        .read()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
+    let answer = plain::answer(&host, &target, &names, &challenges);
+    timeout(times.idle, stream.write_all(&answer)).await.ok();
+}
+
+/// The client of a connection: from the PROXY header of the door within the handshake time,
+/// or the peer; `None` closes the connection.
+async fn client<H: Hub>(proxy: &Proxy<H>, stream: &mut TcpStream, peer: IpAddr) -> Option<IpAddr> {
+    if !proxy.door {
+        return Some(peer);
+    }
+    timeout(proxy.timeouts.handshake, client_of_door(stream))
+        .await
+        .ok()
+        .flatten()
+}
+
+/// One TLS connection: the name of its SNI, its limits, its request and its answer.
+async fn one_tls<H: Hub>(proxy: &Proxy<H>, mut stream: TcpStream, peer: IpAddr, mut pass: Pass) {
+    let times = proxy.timeouts;
+    let started = tokio::time::Instant::now();
+    let Some(client) = client(proxy, &mut stream, peer).await else {
+        return;
+    };
+    if !pass.admit(client) {
+        return;
+    }
     let config = Arc::clone(&proxy.tls.read().unwrap_or_else(PoisonError::into_inner));
-    let Ok(mut tls) = TlsAcceptor::from(config).accept(stream).await else {
+    let left = times.handshake.saturating_sub(started.elapsed());
+    let Ok(Ok(tls)) = timeout(left, TlsAcceptor::from(config).accept(stream)).await else {
         return;
     };
     let Some(name) = tls.get_ref().1.server_name().map(str::to_owned) else {
         return;
     };
+    let mut tls = Idle::new(tls, times.idle);
     let Some(application) = proxy
         .names
         .read()
@@ -212,21 +249,18 @@ async fn request<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
     (name, application): (&str, Uuid),
     client: IpAddr,
 ) -> Option<u16> {
-    let Ok((head, early)) = read_head(tls).await else {
-        tls.write_all(&Status::HeadTooLarge.answer()).await.ok();
-        return Some(Status::HeadTooLarge.code());
-    };
-    let rewritten = match head::rewrite(&head, name, client) {
-        Ok(rewritten) => rewritten,
+    let (rewritten, early) = match read_request(proxy.timeouts.head, tls, name, client).await {
+        Ok(read) => read,
         Err(status) => {
             tls.write_all(&status.answer()).await.ok();
             return Some(status.code());
         }
     };
-    let Ok(mut app) = proxy.hub.connect(application).await else {
+    let Ok(app) = proxy.hub.connect(application).await else {
         tls.write_all(NO_APPLICATION).await.ok();
         return Some(502);
     };
+    let mut app = Idle::new(app, proxy.timeouts.idle);
     let relayed = relay(tls, &early, &mut app, &rewritten).await.ok()?;
     proxy.add(name, |counts| {
         counts.requests += 1;
@@ -241,6 +275,22 @@ async fn request<H: Hub, S: AsyncRead + AsyncWrite + Unpin + Send>(
         .add_bytes(name, total, proxy.now_ms());
     tracing::debug!(name = %name, bytes_in = relayed.bytes_in, bytes_out = relayed.bytes_out, "relayed");
     relayed.status
+}
+
+/// The head of one request within `wait`, written again for the application of `name`, and
+/// the bytes after it.
+async fn read_request<S: AsyncRead + Unpin>(
+    wait: std::time::Duration,
+    tls: &mut S,
+    name: &str,
+    client: IpAddr,
+) -> Result<(head::Rewritten, Vec<u8>), Status> {
+    let (head, early) = match timeout(wait, read_head(tls)).await {
+        Ok(Ok(read)) => read,
+        Ok(Err(NoHead)) => return Err(Status::HeadTooLarge),
+        Err(_) => return Err(Status::RequestTimeout),
+    };
+    Ok((head::rewrite(&head, name, client)?, early))
 }
 
 /// Why a head was not read.

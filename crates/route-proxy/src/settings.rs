@@ -2,9 +2,9 @@
 //! `ANIMA_ROUTE_PROXY_LISTEN` is set: off by default, so no deploy opens a public listener by
 //! accident.
 
-use std::{collections::BTreeMap, net::SocketAddr, path::PathBuf};
+use std::{collections::BTreeMap, net::SocketAddr, path::PathBuf, time::Duration};
 
-use crate::limits::Limits;
+use crate::limits::{Caps, Limits, Timeouts};
 
 const HUB_SOCKET: &str = "ANIMA_ROUTE_PROXY_HUB_SOCKET";
 const LISTEN: &str = "ANIMA_ROUTE_PROXY_LISTEN";
@@ -13,6 +13,12 @@ const DOOR: &str = "ANIMA_ROUTE_PROXY_DOOR";
 const CONNECTIONS: &str = "ANIMA_ROUTE_PROXY_CONNECTIONS";
 const NEW_PER_SECOND: &str = "ANIMA_ROUTE_PROXY_NEW_PER_SECOND";
 const BYTES_PER_DAY: &str = "ANIMA_ROUTE_PROXY_BYTES_PER_DAY";
+const HANDSHAKE_SECONDS: &str = "ANIMA_ROUTE_PROXY_HANDSHAKE_SECONDS";
+const HEAD_SECONDS: &str = "ANIMA_ROUTE_PROXY_HEAD_SECONDS";
+const IDLE_SECONDS: &str = "ANIMA_ROUTE_PROXY_IDLE_SECONDS";
+const OPEN_TOTAL: &str = "ANIMA_ROUTE_PROXY_OPEN_TOTAL";
+const OPEN_PER_CLIENT: &str = "ANIMA_ROUTE_PROXY_OPEN_PER_CLIENT";
+const OPEN_PLAIN: &str = "ANIMA_ROUTE_PROXY_OPEN_PLAIN";
 const DAY_MS: u64 = 24 * 60 * 60 * 1000;
 
 /// What the proxy runs with.
@@ -26,6 +32,11 @@ pub struct Settings {
     /// The connections come from the door with a PROXY header. Never on a self-hosted hub.
     pub door: bool,
     pub limits: Limits,
+    pub timeouts: Timeouts,
+    /// The connections of the TLS listener before the name is known.
+    pub tls_caps: Caps,
+    /// The connections of the plain listener.
+    pub plain_caps: Caps,
 }
 
 /// Why the settings were not read.
@@ -61,7 +72,40 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Option<Settings>, Sett
             bytes_per_period: read(env, BYTES_PER_DAY)?.unwrap_or(0),
             period_ms: DAY_MS,
         },
+        timeouts: timeouts(env)?,
+        tls_caps: Caps {
+            total: positive(env, OPEN_TOTAL)?.unwrap_or(1024),
+            per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(32),
+        },
+        plain_caps: Caps {
+            total: positive(env, OPEN_PLAIN)?.unwrap_or(256),
+            per_client: positive(env, OPEN_PER_CLIENT)?.unwrap_or(32),
+        },
     }))
+}
+
+/// The timeouts: 10 s for the handshake and the head, 300 s with no byte by default.
+fn timeouts(env: &BTreeMap<String, String>) -> Result<Timeouts, SettingsError> {
+    let default = Timeouts::default();
+    let seconds = |name, default: Duration| {
+        positive::<u64>(env, name).map(|value| value.map_or(default, Duration::from_secs))
+    };
+    Ok(Timeouts {
+        handshake: seconds(HANDSHAKE_SECONDS, default.handshake)?,
+        head: seconds(HEAD_SECONDS, default.head)?,
+        idle: seconds(IDLE_SECONDS, default.idle)?,
+    })
+}
+
+/// A number above 0, or `None` when it is not set.
+fn positive<T: std::str::FromStr + Default + PartialEq>(
+    env: &BTreeMap<String, String>,
+    name: &'static str,
+) -> Result<Option<T>, SettingsError> {
+    match read::<T>(env, name)? {
+        Some(value) if value == T::default() => Err(SettingsError::Invalid(name)),
+        value => Ok(value),
+    }
 }
 
 fn read<T: std::str::FromStr>(

@@ -15,7 +15,8 @@ use super::{
 use crate::ids::{ApplicationId, DeviceId, RouteId};
 
 const SELECT: &str = "SELECT r.id, r.name, r.application_id, r.device_id, r.port, r.address, \
-                             r.token, r.proof, r.failed_reads, r.machine_consent, r.checked_at, \
+                             r.token, r.proof, r.failed_reads, r.machine_consent, \
+                             r.application_recorded, r.checked_at, \
                              r.issue_failures, r.next_issue_at, r.created_at, \
                              c.not_after, c.stored_at, \
                              t.requests, t.bytes_in, t.bytes_out, t.refused \
@@ -35,6 +36,7 @@ struct Row {
     proof: String,
     failed_reads: i32,
     machine_consent: bool,
+    application_recorded: bool,
     checked_at: Option<DateTime<Utc>>,
     created_at: DateTime<Utc>,
     not_after: Option<DateTime<Utc>>,
@@ -67,6 +69,7 @@ impl TryFrom<Row> for Route {
             proof: Proof::from_stored(&row.proof).ok_or(Error::Unreadable)?,
             failed_reads: u32::try_from(row.failed_reads).map_err(|_| Error::Unreadable)?,
             machine_consent: row.machine_consent,
+            application_recorded: row.application_recorded,
             checked_at: row.checked_at,
             certificate: row
                 .not_after

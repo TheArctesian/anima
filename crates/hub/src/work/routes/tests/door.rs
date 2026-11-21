@@ -16,14 +16,14 @@ use crate::{
     fleet::credentials::test_vault,
     work::routes::{
         self, Ordering,
-        door::{Connector, Door, LinkStreams, Stream, answer},
+        door::{Connector, Door, IDLE_DEFAULT, LinkStreams, Stream, answer},
         proof::record_value,
     },
 };
 
 /// A connector that records each address and answers each connection with `hello`.
 #[derive(Default)]
-struct FakeConnector {
+pub struct FakeConnector {
     reached: Mutex<Vec<SocketAddr>>,
 }
 
@@ -38,7 +38,7 @@ impl Connector for FakeConnector {
 }
 
 /// Adds `photos.example.com` to port 3000 of `docker-host` and makes it serve.
-async fn serving(pool: &sqlx::PgPool) {
+pub async fn serving(pool: &sqlx::PgPool) {
     let mut conn = pool.acquire().await.unwrap();
     let route = routes::add(
         (pool, &settings()),
@@ -68,19 +68,25 @@ async fn serving(pool: &sqlx::PgPool) {
     routes::order_certificate(ordering, route.id, now())
         .await
         .unwrap();
-    sqlx::query("UPDATE routes.route SET machine_consent = true")
+    sqlx::query("UPDATE routes.route SET machine_consent = true, application_recorded = true")
         .execute(pool)
         .await
         .unwrap();
 }
 
-fn door(pool: &sqlx::PgPool, connector: Arc<FakeConnector>, streams: usize) -> Door {
+pub fn door<C: Connector + 'static>(
+    pool: &sqlx::PgPool,
+    connector: Arc<C>,
+    streams: usize,
+) -> Door {
     Door {
         db: pool.clone(),
         vault: test_vault(),
         clock: Arc::new(FixedClock(now())),
         connector,
         streams: LinkStreams::new(streams),
+        proxy_uid: 0,
+        idle: IDLE_DEFAULT,
     }
 }
 

@@ -31,6 +31,14 @@ async fn give_consent(pool: &sqlx::PgPool) {
         .unwrap();
 }
 
+/// What the hub's record of the application will set (task H6); nothing sets it yet.
+async fn record_application(pool: &sqlx::PgPool) {
+    sqlx::query("UPDATE routes.route SET application_recorded = true")
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
 db_test! {
     async fn an_added_name_waits_for_its_proof_with_its_target_fixed(pool: PgPool) {
         let added = add(&pool, "Photos.Example.com", 3000).await.unwrap();
@@ -53,13 +61,10 @@ db_test! {
         assert!(matches!(add(&pool, "*.example.com", 3000).await, Err(Error::Name(_))));
         assert!(matches!(add(&pool, "photos.anima.ing", 3000).await, Err(Error::Name(_))));
         assert!(matches!(add(&pool, "other.example.com", 3001).await, Err(Error::OtherTarget)));
-        let mut conn = pool.acquire().await.unwrap();
-        let engine = routes::NewRoute {
-            holds_engine_socket: true,
-            ..new_route("portainer.example.com", 9000)
-        };
-        let refused = routes::add((&pool, &settings()), &mut conn, &engine, now()).await;
-        assert!(matches!(refused, Err(Error::EngineSocket)));
+        for port in [2375, 10250, 5432, 9090] {
+            let refused = add(&pool, &format!("p{port}.example.com"), port).await;
+            assert!(matches!(refused, Err(Error::Target(_))), "{port}");
+        }
         assert_eq!(routes::list(&pool, None).await.unwrap().len(), 1);
     }
 }
@@ -126,6 +131,10 @@ db_test! {
         assert_eq!(stored.waits(now()), Some(Waits::MachineConsent));
         assert!(routes::served(&pool, &vault, now()).await.unwrap().is_empty());
         give_consent(&pool).await;
+        let stored = routes::get(&pool, route.id).await.unwrap();
+        assert_eq!(stored.waits(now()), Some(Waits::ApplicationRecord));
+        assert!(routes::served(&pool, &vault, now()).await.unwrap().is_empty());
+        record_application(&pool).await;
         let served = routes::served(&pool, &vault, now()).await.unwrap();
         assert_eq!(served.len(), 1);
         assert_eq!(served[0].key_pem.expose(), plain);

@@ -6,7 +6,10 @@
 //! `X-Forwarded-Proto` from what it knows. It removes each cookie of a hub. The `Host` must be
 //! the name of the TLS SNI field, or the answer is 421. One request goes on each connection to
 //! the application (`Connection: close`), so each request of the client is read here; a body
-//! must have a `Content-Length`. A WebSocket upgrade keeps its `Connection: upgrade`.
+//! must have one `Content-Length` of digits only, and never with a `Transfer-Encoding`; a header
+//! name with `_` is refused, so that no application reads it as a name with `-`
+//! (SF-NEW-revrouteheaders). A WebSocket upgrade with its `Sec-WebSocket-Key` keeps its
+//! `Connection: upgrade`; without the key the request is a plain one (SF-NEW-revrouteupgrade).
 
 use std::net::IpAddr;
 
@@ -33,6 +36,7 @@ const HUB_COOKIES: [&str; 2] = ["__host-anima", "anima_"];
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
     BadRequest = 400,
+    RequestTimeout = 408,
     LengthRequired = 411,
     Misdirected = 421,
     HeadTooLarge = 431,
@@ -48,6 +52,7 @@ impl Status {
     const fn reason(self) -> &'static str {
         match self {
             Self::BadRequest => "Bad Request",
+            Self::RequestTimeout => "Request Timeout",
             Self::LengthRequired => "Length Required",
             Self::Misdirected => "Misdirected Request",
             Self::HeadTooLarge => "Request Header Fields Too Large",
@@ -74,7 +79,8 @@ pub struct Rewritten {
     pub head: Vec<u8>,
     /// The bytes of the body that follow the head.
     pub body: u64,
-    /// A WebSocket upgrade: after the head, the bytes go both ways as they are.
+    /// A WebSocket upgrade with its key: after an answer `101`, the bytes go both ways as they
+    /// are.
     pub upgrade: bool,
     /// The path of the request, for the redirect of port 80 only. Never logged.
     pub target: String,
@@ -99,38 +105,32 @@ pub fn rewrite(head: &[u8], sni: &str, client: IpAddr) -> Result<Rewritten, Stat
     let request_line = lines.next().ok_or(Status::BadRequest)?;
     let target = request_target(request_line)?;
     let mut kept = vec![request_line.to_owned()];
-    let mut host = None;
-    let (mut body, mut upgrade) = (0_u64, false);
+    let mut framing = Framing::default();
     for (count, line) in lines.enumerate() {
         if count >= HEADERS_MAX {
             return Err(Status::HeadTooLarge);
         }
         let (name, value) = header(line)?;
         let lower = name.to_ascii_lowercase();
-        match lower.as_str() {
-            "host" if host.is_some() => return Err(Status::BadRequest),
-            "host" => host = Some(value.to_owned()),
-            "transfer-encoding" => return Err(Status::LengthRequired),
-            "content-length" => body = value.parse().map_err(|_| Status::BadRequest)?,
-            "upgrade" => upgrade = value.eq_ignore_ascii_case("websocket"),
-            "cookie" => {
-                if let Some(cookies) = without_hub_cookies(value) {
-                    kept.push(format!("{name}: {cookies}"));
-                }
-                continue;
+        if lower == "cookie" {
+            if let Some(cookies) = without_hub_cookies(value) {
+                kept.push(format!("{name}: {cookies}"));
             }
-            _ => {}
+            continue;
         }
+        framing.note(&lower, value)?;
         if !dropped(&lower) {
             kept.push(format!("{name}: {value}"));
         }
     }
-    if !host.is_some_and(|host| same_host(&host, sni)) {
+    if !framing
+        .host
+        .as_deref()
+        .is_some_and(|host| same_host(host, sni))
+    {
         return Err(Status::Misdirected);
     }
-    if upgrade && body > 0 {
-        return Err(Status::BadRequest);
-    }
+    let (body, upgrade) = framing.body()?;
     kept.push(format!("x-forwarded-for: {client}"));
     kept.push("x-forwarded-proto: https".to_owned());
     kept.push(
@@ -149,6 +149,56 @@ pub fn rewrite(head: &[u8], sni: &str, client: IpAddr) -> Result<Rewritten, Stat
         upgrade,
         target,
     })
+}
+
+/// What the headers of a request say of its host, its body and an upgrade.
+#[derive(Default)]
+struct Framing {
+    host: Option<String>,
+    length: Option<u64>,
+    chunked: bool,
+    websocket: bool,
+    key: bool,
+}
+
+impl Framing {
+    /// Notes one header by its name in lower case.
+    fn note(&mut self, lower: &str, value: &str) -> Result<(), Status> {
+        match lower {
+            "host" | "content-length" if self.seen(lower) => return Err(Status::BadRequest),
+            "host" => self.host = Some(value.to_owned()),
+            "content-length" => self.length = Some(content_length(value)?),
+            "transfer-encoding" => self.chunked = true,
+            "upgrade" => self.websocket = value.eq_ignore_ascii_case("websocket"),
+            "sec-websocket-key" => self.key = !value.is_empty(),
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn seen(&self, lower: &str) -> bool {
+        if lower == "host" {
+            self.host.is_some()
+        } else {
+            self.length.is_some()
+        }
+    }
+
+    /// The length of the body and whether the request is a WebSocket upgrade with its key.
+    fn body(&self) -> Result<(u64, bool), Status> {
+        match (self.chunked, self.length) {
+            (true, Some(_)) => Err(Status::BadRequest),
+            (true, None) => Err(Status::LengthRequired),
+            (false, length) => {
+                let body = length.unwrap_or(0);
+                let upgrade = self.websocket && self.key;
+                if upgrade && body > 0 {
+                    return Err(Status::BadRequest);
+                }
+                Ok((body, upgrade))
+            }
+        }
+    }
 }
 
 /// The target of `METHOD target HTTP/1.x`, which must be a path.
@@ -171,10 +221,20 @@ fn request_target(line: &str) -> Result<String, Status> {
     Ok(target.to_owned())
 }
 
-/// One header line as name and value; a folded line or a bad name is refused.
+/// A `Content-Length` value: digits only, with no sign, space or list.
+fn content_length(value: &str) -> Result<u64, Status> {
+    if value.is_empty() || !value.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(Status::BadRequest);
+    }
+    value.parse().map_err(|_| Status::BadRequest)
+}
+
+/// One header line as name and value; a folded line or a bad name is refused. A name is a
+/// token of RFC 9110 without `_`: a server that reads `_` as `-` would take `X_Forwarded_For`
+/// for a header that the proxy removes.
 fn header(line: &str) -> Result<(&str, &str), Status> {
     let (name, value) = line.split_once(':').ok_or(Status::BadRequest)?;
-    let token = |b: u8| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b);
+    let token = |b: u8| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^`|~".contains(&b);
     if name.is_empty() || !name.bytes().all(token) {
         return Err(Status::BadRequest);
     }

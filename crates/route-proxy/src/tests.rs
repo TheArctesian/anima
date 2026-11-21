@@ -4,5 +4,6 @@ mod head;
 mod limits;
 mod plain;
 mod relay;
+mod settings;
 mod tls;
 mod wire;

@@ -56,9 +56,7 @@ fn to_graphql(error: Error) -> async_graphql::Error {
         Error::Name(refusal) => invalid(&[FieldError::new("name", refusal.to_string())]),
         Error::Target(refusal) => invalid(&[FieldError::new("port", refusal.to_string())]),
         Error::Unresolved => invalid(&[FieldError::new("deviceId", error.to_string())]),
-        Error::NameTaken | Error::OtherTarget | Error::EngineSocket => {
-            coded(error.to_string(), ErrorCode::Conflict)
-        }
+        Error::NameTaken | Error::OtherTarget => coded(error.to_string(), ErrorCode::Conflict),
         other => internal(other),
     }
 }
@@ -140,7 +138,6 @@ impl Mutation {
             application: parse(&input.application_id, "applicationId")?,
             device: parse(&input.device_id, "deviceId")?,
             port: i64::from(input.port),
-            holds_engine_socket: input.holds_engine_socket,
         };
         let settings = settings(ctx)?;
         let trail = Trail::from_context(ctx)?;

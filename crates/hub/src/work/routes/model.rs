@@ -22,6 +22,10 @@ pub struct Route {
     pub failed_reads: u32,
     /// The second consent at the machine (OD-HOST-43). Nothing sets it yet.
     pub machine_consent: bool,
+    /// The hub's record of the application names this device and this port, and no socket of
+    /// the engine (SF-NEW-revroutetarget). The hub keeps no such record before task H6, so
+    /// nothing sets it yet.
+    pub application_recorded: bool,
     pub checked_at: Option<DateTime<Utc>>,
     pub certificate: Option<CertificateState>,
     pub traffic: Traffic,
@@ -52,6 +56,9 @@ pub enum Waits {
     Proof,
     /// The second consent at the machine is not given (OD-HOST-43).
     MachineConsent,
+    /// The hub has no record of the application with this device and port and without the
+    /// socket of the engine (task H6; SF-NEW-revroutetarget).
+    ApplicationRecord,
     /// The route has no certificate that is valid now.
     Certificate,
 }
@@ -66,6 +73,9 @@ impl Route {
         if !self.machine_consent {
             return Some(Waits::MachineConsent);
         }
+        if !self.application_recorded {
+            return Some(Waits::ApplicationRecord);
+        }
         match self.certificate {
             Some(certificate) if certificate.not_after > now => None,
             _ => Some(Waits::Certificate),
@@ -73,17 +83,15 @@ impl Route {
     }
 }
 
-/// What a person gives to add a name.
+/// What a person gives to add a name. The device and the port are what the person says; the
+/// route serves only when the hub's record of the application confirms them and says that it
+/// holds no socket of the engine ([`Route::application_recorded`], SF-NEW-revroutetarget).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NewRoute {
     pub name: String,
     pub application: ApplicationId,
     pub device: DeviceId,
     pub port: i64,
-    /// Whether the application holds the socket of the engine (Section 10). Such an application
-    /// is never made public. Until the applications program keeps this in its record (task H6),
-    /// the person says it.
-    pub holds_engine_socket: bool,
 }
 
 /// A route that was added, with what the person must do and what the hub warns about.

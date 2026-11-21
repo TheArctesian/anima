@@ -3539,6 +3539,8 @@ enum ApplicationRouteWait {
   PROOF
   "The second consent at the machine (OD-HOST-43). Nothing can give it yet: no route serves in this version."
   MACHINE_CONSENT
+  "The hub has no record of the application that names this device and this port and no socket of the engine (task H6). The hub keeps no such record yet: no route serves in this version."
+  APPLICATION_RECORD
   "The route has no certificate that is valid now."
   CERTIFICATE
 }
@@ -3586,9 +3588,8 @@ input ApplicationRouteInput {
   name: String!
   applicationId: ID!
   deviceId: ID!
+  "The port of the application. Never a port of a session, of Anima, of the engine of the containers, of a database or of metrics. The route serves only when the hub's record of the application names this device and this port."
   port: Int!
-  "Whether the application holds the socket of the engine. Such an application is never made public (Section 10)."
-  holdsEngineSocket: Boolean!
 }
 
 # ---------------------------------------------------------------- root types

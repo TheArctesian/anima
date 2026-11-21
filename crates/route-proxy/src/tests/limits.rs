@@ -1,6 +1,8 @@
 //! The limits of a name (Section 12.7).
 
-use crate::limits::{Limiter, Limits, Refusal};
+use std::net::IpAddr;
+
+use crate::limits::{Caps, Gate, Limiter, Limits, Refusal};
 
 const LIMITS: Limits = Limits {
     connections: 2,
@@ -49,4 +51,23 @@ fn the_bytes_of_a_period_are_limited_until_the_next_period() {
     assert!(!limiter.add_bytes("a.example.com", 600, 20));
     assert_eq!(limiter.admit("a.example.com", 30), Err(Refusal::Bytes));
     assert_eq!(limiter.admit("a.example.com", 60_030), Ok(()));
+}
+
+#[test]
+fn a_listener_caps_its_connections_in_all_and_for_each_client() {
+    let mut gate = Gate::new(Caps {
+        total: 3,
+        per_client: 2,
+    });
+    let one: IpAddr = "198.51.100.1".parse().unwrap();
+    let two: IpAddr = "198.51.100.2".parse().unwrap();
+    assert!(gate.enter() && gate.enter_client(one));
+    assert!(gate.enter() && gate.enter_client(one));
+    assert!(gate.enter());
+    assert!(!gate.enter_client(one), "a client has its own cap");
+    assert!(gate.enter_client(two));
+    assert!(!gate.enter(), "the cap in all");
+    gate.leave();
+    gate.leave_client(one);
+    assert!(gate.enter() && gate.enter_client(one));
 }

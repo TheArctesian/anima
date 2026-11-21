@@ -10,6 +10,9 @@ mod compose_file;
 mod containers;
 mod metrics;
 mod read;
+/// The public names of applications (task H21): its own tool set, kept with the other
+/// application tools of a device.
+pub mod routes;
 
 use rmcp::model::JsonObject;
 use serde_json::Value;

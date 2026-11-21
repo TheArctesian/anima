@@ -2006,22 +2006,27 @@ sealed key, the connection by the identifier of an application only, the limit o
 the rewrite of the headers. No test used a real resolver, a real certificate, a real port 443, the user
 of the operating system of the proxy, or the link to a real machine. The real ACME issuer is not built:
 it answers "not configured", so no route serves on a real hub yet. The consent of the machine
-(OD-HOST-43) is a field that stays "not given".
+(OD-HOST-43) is a field that stays "not given", and so is the mark that the hub's record of the
+application names the device and the port (task H6, SF-NEW-revroutetarget). The timeouts and the caps of
+the proxy before the name (SF-NEW-revroutelimits) were tested only with in-memory streams.
 
-1. Before the issuer is built: on a hub that a person hosts, set `ANIMA_ROUTES_SOCKET` and start the hub.
+1. Before the issuer is built: on a hub that a person hosts, set `ANIMA_ROUTES_SOCKET` and
+   `ANIMA_ROUTES_PROXY_UID` (the user ID of the proxy) and start the hub.
    Run `anima route add` with a name of a domain that you own, an application identifier, a machine on
    the link and its port. Expected: the command asks for the second factor, then shows the TXT record
    `_anima.<name>` with a token of 64 hexadecimal characters.
 2. Put the TXT record in the DNS of the name and run `anima route check <id>`. Expected: the proof is
-   "Proven". The state waits for the consent of the machine and for a certificate.
-3. Run `anima route add` with a name of the domain of the hub, a name with `*`, and port 22. Expected:
-   each one is refused with its reason.
+   "Proven". The state waits for the consent of the machine, for the record of the application and for a
+   certificate.
+3. Run `anima route add` with a name of the domain of the hub, a name with `*`, and the ports 22, 2375,
+   10250, 5432 and 9090. Expected: each one is refused with its reason.
 4. Start `anima-route-proxy` as a user of the operating system that is not the user of the hub, with
    `ANIMA_ROUTE_PROXY_LISTEN` unset. Expected: it says that it is off and stops.
 5. As that user, try to open the dial socket of the link, the control socket of the link, the port of
    the hub and the database. Expected: each one is refused by the permissions of the operating system;
-   only the socket of `ANIMA_ROUTES_SOCKET` opens.
-6. When the issuer and the consent are built: set `ANIMA_ROUTE_PROXY_LISTEN` to port 443 and
+   only the socket of `ANIMA_ROUTES_SOCKET` opens. As a third user that is in the group of that socket,
+   send `"table"` to it. Expected: the hub closes the connection with no answer.
+6. When the issuer, the consent and the record of the application are built: set `ANIMA_ROUTE_PROXY_LISTEN` to port 443 and
    `ANIMA_ROUTE_PROXY_LISTEN_PLAIN` to port 80, and open `https://<name>/` from a second network.
    Expected: the page of the application, with a valid certificate. `http://<name>/` goes to https.
    A request with a `Host` that is not the name gets 421. The application gets no cookie of the hub

@@ -5,7 +5,10 @@
 //! a connection to an application by its identifier, and its counts. The hub maps the
 //! identifier to the device and the port of its own record ([`super::target_of`]); no request
 //! can name a device, an address or a port, so the proxy can never reach port 22 of a machine.
-//! The socket is served only when `ANIMA_ROUTES_SOCKET` is set: off by default.
+//! The socket is served only when `ANIMA_ROUTES_SOCKET` is set: off by default. It has mode
+//! `0660` and answers only a peer with the user ID of the proxy (`ANIMA_ROUTES_PROXY_UID`,
+//! SF-NEW-revroutesocket). A request line must come within [`REQUEST_WAIT`], and a stream ends
+//! after [`Door::idle`] with no byte (SF-NEW-revroutelimits).
 //!
 //! Each link has a limit of public streams at one time, so the public traffic leaves room for
 //! the sessions of the operator on the same tunnel (SF-NEW-routelinkshare). I/O edge; it writes
@@ -13,17 +16,24 @@
 
 use std::{
     collections::HashMap,
-    io,
+    fs, io,
     net::SocketAddr,
+    os::unix::fs::{FileTypeExt as _, PermissionsExt as _},
+    path::Path,
     sync::{Arc, Mutex, PoisonError},
+    time::Duration,
 };
 
-use anima_route_proxy::wire::{self, Answer, Named, Request, Table};
+use anima_route_proxy::{
+    relay::Idle,
+    wire::{self, Answer, Named, Request, Table},
+};
 use async_trait::async_trait;
 use sqlx::PgPool;
 use tokio::{
     io::{AsyncRead, AsyncWrite, AsyncWriteExt as _, BufReader, copy_bidirectional},
-    net::UnixListener,
+    net::{UnixListener, UnixStream},
+    time::timeout,
 };
 use zeroize::Zeroizing;
 
@@ -36,6 +46,11 @@ use crate::{
     },
     ids::{ApplicationId, DeviceId},
 };
+
+/// The longest wait for the request line of the proxy.
+pub const REQUEST_WAIT: Duration = Duration::from_secs(10);
+/// The default of [`Door::idle`].
+pub const IDLE_DEFAULT: Duration = Duration::from_secs(300);
 
 /// A stream to the port of an application.
 pub trait Stream: AsyncRead + AsyncWrite + Unpin + Send {}
@@ -112,14 +127,48 @@ pub struct Door {
     pub clock: Arc<dyn Clock>,
     pub connector: Arc<dyn Connector>,
     pub streams: LinkStreams,
+    /// The user ID of the proxy process: the one peer that the socket answers.
+    pub proxy_uid: u32,
+    /// The time with no byte after which a stream to an application ends.
+    pub idle: Duration,
 }
 
-/// Serves the interface on `listener` until the task is stopped.
+/// Makes the socket of the interface at `path`, with mode `0660`: the proxy reaches it through
+/// the group of the socket. A socket an earlier hub left at `path` is replaced; any other file
+/// there is refused.
+///
+/// # Errors
+/// `path` holds a file that is not a socket, or the socket cannot be made.
+pub fn bind(path: &Path) -> io::Result<UnixListener> {
+    match fs::symlink_metadata(path) {
+        Ok(left) if left.file_type().is_socket() => fs::remove_file(path)?,
+        Ok(_) => return Err(io::ErrorKind::AlreadyExists.into()),
+        Err(_) => {}
+    }
+    let listener = UnixListener::bind(path)?;
+    if let Err(error) = fs::set_permissions(path, fs::Permissions::from_mode(0o660)) {
+        let _ = fs::remove_file(path);
+        return Err(error);
+    }
+    Ok(listener)
+}
+
+/// Whether the peer of `socket` runs as `proxy_uid`.
+fn from_proxy(socket: &UnixStream, proxy_uid: u32) -> bool {
+    socket.peer_cred().is_ok_and(|peer| peer.uid() == proxy_uid)
+}
+
+/// Serves the interface on `listener` until the task is stopped. A connection from a process
+/// that is not the proxy is closed with no answer.
 pub async fn serve(listener: UnixListener, door: Arc<Door>) {
     loop {
         let Ok((socket, _)) = listener.accept().await else {
             continue;
         };
+        if !from_proxy(&socket, door.proxy_uid) {
+            tracing::warn!("a process that is not the route proxy opened the socket of the proxy");
+            continue;
+        }
         let door = Arc::clone(&door);
         tokio::spawn(async move {
             if let Err(error) = answer(&door, socket).await {
@@ -149,7 +198,15 @@ pub async fn answer<S: AsyncRead + AsyncWrite + Unpin + Send>(
     socket: S,
 ) -> Result<(), DoorError> {
     let mut socket = BufReader::new(socket);
-    let Some(line) = wire::read_line(&mut socket, wire::REQUEST_MAX).await? else {
+    let Ok(read) = timeout(
+        REQUEST_WAIT,
+        wire::read_line(&mut socket, wire::REQUEST_MAX),
+    )
+    .await
+    else {
+        return Ok(());
+    };
+    let Some(line) = read? else {
         return Ok(());
     };
     let now = door.clock.now();
@@ -203,10 +260,11 @@ async fn connect<S: AsyncRead + AsyncWrite + Unpin + Send>(
     let Some(_permit) = door.streams.take(device) else {
         return say(socket, Answer::Refused).await;
     };
-    let Ok(mut stream) = door.connector.connect(address).await else {
+    let Ok(stream) = door.connector.connect(address).await else {
         return say(socket, Answer::Unavailable).await;
     };
     say(socket, Answer::Ok).await?;
+    let mut stream = Idle::new(stream, door.idle);
     copy_bidirectional(socket, &mut stream).await?;
     Ok(())
 }

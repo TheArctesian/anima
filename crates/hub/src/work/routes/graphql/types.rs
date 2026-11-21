@@ -26,6 +26,7 @@ pub(super) enum ProofValue {
 pub(super) enum WaitValue {
     Proof,
     MachineConsent,
+    ApplicationRecord,
     Certificate,
 }
 
@@ -104,6 +105,7 @@ impl RouteView {
         self.route.waits(self.now).map(|waits| match waits {
             Waits::Proof => WaitValue::Proof,
             Waits::MachineConsent => WaitValue::MachineConsent,
+            Waits::ApplicationRecord => WaitValue::ApplicationRecord,
             Waits::Certificate => WaitValue::Certificate,
         })
     }
@@ -163,5 +165,4 @@ pub(super) struct RouteFields {
     pub application_id: ID,
     pub device_id: ID,
     pub port: i32,
-    pub holds_engine_socket: bool,
 }
