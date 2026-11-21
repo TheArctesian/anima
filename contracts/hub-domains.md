@@ -579,7 +579,12 @@ pub async fn batteries(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId
 
 ```rust
 /// Stores an accepted `agentUsage` member of a daemon batch in the batch's transaction (K8 Section 4).
-pub async fn record(conn: &mut PgConnection, device: DeviceId, usage: &daemon_core::agent_usage::AgentUsage) -> Result<(), Error>;
+/// With the accounts of the batch (R-NEW-accountgroup): each replaces the device's report of its source.
+pub async fn record(conn: &mut PgConnection, device: DeviceId, usage: &daemon_core::agent_usage::AgentUsage, now: DateTime<Utc>) -> Result<(), Error>;
+/// The account salt of the hub, made once (K8 Section 8.2; AIS-022, R-NEW-accountgroup).
+pub async fn accounts::salt(db: &Db) -> Result<[u8; 32], Error>;
+/// Every stored account report; accounts::grouped puts the devices of one key under one account.
+pub async fn accounts::list(db: &Db) -> Result<Vec<Reported>, Error>;
 /// The sums an Ask asks for, the total, and the usage state of each device the filter admits.
 /// agent_usage::graphql owns Query.agentUsage and joins each row to its Device (devices::list).
 pub async fn usage(db: &Db, ask: &Ask) -> Result<Report, Error>;

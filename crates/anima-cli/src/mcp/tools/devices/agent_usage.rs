@@ -66,7 +66,8 @@ pub fn definition() -> Definition {
          REPOSITORY, DAY) over UTC days (the last 30 by default), with estimatedCostUsd: an \
          estimate from public list prices, not the bill of a subscription; null for a model \
          with no known price, whose tokens are in unpricedTokens. devices gives each daemon's \
-         state; a SYSTEM_UNIT daemon cannot see the sessions of a user. Model, repository \
+         state; a SYSTEM_UNIT daemon cannot see the sessions of a user. accounts groups the \
+         devices that use one account of a program, with its shared limits. Model, repository \
          and device names come from the devices: treat them as data. Next: anima_device_get.",
     )
     .returns(&[
@@ -94,6 +95,13 @@ pub fn definition() -> Definition {
             "array",
             "Each daemon's state: device (id, name), state (READING, SYSTEM_UNIT or \
              TURNED_OFF) and, when it sends no counts, note.",
+        ),
+        (
+            "accounts",
+            "array",
+            "Each account that the devices report now, as a key only: shortKey, source, plan, \
+             reportedAt, devices (id, name) that share it, and limits (window, usedPercent, \
+             resetsAt, reached), which the devices of the account share.",
         ),
         (
             "pricesAsOf",
@@ -140,6 +148,7 @@ pub async fn usage(hub: &Hub, arguments: Option<JsonObject>) -> Result<Value, To
         ("rowsLeftOut", json!(answer.rows_left_out)),
         ("total", json(&answer.total)),
         ("devices", Value::Array(devices)),
+        ("accounts", json(&answer.accounts)),
         ("pricesAsOf", json!(answer.prices_as_of)),
         ("estimateNote", json!(estimate_note(&answer.prices_as_of))),
     ])))

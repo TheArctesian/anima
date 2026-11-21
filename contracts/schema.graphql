@@ -1438,8 +1438,36 @@ type AgentUsage {
   total: AgentUsageRow!
   "Each device whose daemon sent a usage state, by device name; only the device of filter.deviceId when it is given."
   devices: [AgentUsageDevice!]!
+  "The accounts that the devices report now, each with its devices, newest report first (R-NEW-accountgroup, AIS-022). Not narrowed by the filter."
+  accounts: [AgentAccount!]!
   "The day of the public list prices of estimatedCostUsd, YYYY-MM-DD."
   pricesAsOf: String!
+}
+
+"An account of an AI agent program, as a key only, and the devices that use it (R-NEW-accountgroup, AIS-022)."
+type AgentAccount {
+  "The HMAC-SHA-256 of the vendor's identifier of the account with the salt of this hub, 64 hexadecimal digits; never the identifier."
+  key: String!
+  "The first 8 digits of key, to tell two accounts of one program apart."
+  shortKey: String!
+  source: AgentSource!
+  "The name of the plan as the program states it."
+  plan: String
+  "The limit windows of the newest report; the limit is the account's, shared by its devices."
+  limits: [AgentAccountLimit!]!
+  reportedAt: DateTime!
+  "The devices that use the account, newest report first."
+  devices: [Device!]!
+}
+
+"One limit window of an account."
+type AgentAccountLimit {
+  "The name of the window as the program gives it (five_hour, seven_day), or its length (300 min)."
+  window: String!
+  "How much of the window is used, 0 to 100; null when the program says only whether it is reached."
+  usedPercent: Int
+  resetsAt: DateTime
+  reached: Boolean!
 }
 
 "The sums of one group. A dimension that by does not name is null; MODEL and REPOSITORY are also null for use with no model or no repository. Every text comes from a device. Counts are whole numbers; a Float holds a count above 2^31 exactly up to 2^53."

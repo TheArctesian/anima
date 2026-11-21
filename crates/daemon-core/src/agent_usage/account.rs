@@ -3,6 +3,8 @@
 //! the limit windows. Never the identifier, the name of the account, an address or a token.
 //! Pure.
 
+use std::fmt::Write as _;
+
 use chrono::{DateTime, Utc};
 use hmac::{Hmac, KeyInit as _, Mac as _};
 use sha2::Sha256;
@@ -44,6 +46,9 @@ pub struct Limit {
 /// HMAC-SHA-256 of `<source>:<identifier>`, in lower-case hexadecimal (K8 Section 4). The same
 /// account on two machines of one hub gives one key; a different salt gives a different key, and
 /// the key does not give the identifier back.
+///
+/// # Panics
+/// Never: HMAC takes a key of any length.
 #[must_use]
 pub fn account_key(salt: &[u8; SALT_BYTES], source: Source, identifier: &str) -> String {
     let mut mac = Hmac::<Sha256>::new_from_slice(salt).expect("HMAC takes a key of any length");
@@ -53,8 +58,10 @@ pub fn account_key(salt: &[u8; SALT_BYTES], source: Source, identifier: &str) ->
     mac.finalize()
         .into_bytes()
         .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+        .fold(String::with_capacity(KEY_DIGITS), |mut key, byte| {
+            let _ = write!(key, "{byte:02x}");
+            key
+        })
 }
 
 /// Whether `text` is a key: [`KEY_DIGITS`] lower-case hexadecimal digits.

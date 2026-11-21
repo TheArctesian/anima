@@ -118,6 +118,10 @@ mod optional_time {
     use chrono::{DateTime, Utc};
     use serde::{Deserialize, Deserializer, Serializer};
 
+    #[expect(
+        clippy::ref_option,
+        reason = "serde's `with` passes the field by reference"
+    )]
     pub fn serialize<S: Serializer>(
         time: &Option<DateTime<Utc>>,
         serializer: S,

@@ -1,4 +1,4 @@
-# `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, AIS-021, AIS-024).
+# `anima agents usage` and the MCP tool `anima_agents_usage` (AIS-020, AIS-021, AIS-024; the accounts, R-NEW-accountgroup).
 fragment UsageSums on AgentUsageRow {
   device {
     id
@@ -37,6 +37,22 @@ query AgentUsage($filter: AgentUsageFilter, $by: [AgentUsageDimension!]!) {
         name
       }
       state
+    }
+    accounts {
+      shortKey
+      source
+      plan
+      reportedAt
+      devices {
+        id
+        name
+      }
+      limits {
+        window
+        usedPercent
+        resetsAt
+        reached
+      }
     }
   }
 }

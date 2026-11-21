@@ -10,6 +10,7 @@
 //! by model into the groups asked for. The texts (model and repository names) come from a
 //! device: they were checked at ingest and only ever reach SQL as bound values.
 
+pub mod accounts;
 pub mod graphql;
 mod grouping;
 mod model;
@@ -18,7 +19,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use daemon_core::agent_usage::AgentUsage;
 use sqlx::{PgConnection, PgPool};
 
@@ -46,7 +47,8 @@ pub enum Error {
 /// Stores `usage`, accepted from a batch of `device`, in the caller's transaction (K8 Section
 /// 4): the state when the hub knows it, and each session day of a known source, which replaces
 /// what is stored for that session and day. Start, end and repository of a session come from
-/// its entry stored last.
+/// its entry stored last. The accounts, when the batch sent them, replace the device's earlier
+/// report of each source (R-NEW-accountgroup).
 ///
 /// # Errors
 /// `Database` when a statement fails; nothing of the batch is then kept.
@@ -54,11 +56,16 @@ pub async fn record(
     conn: &mut PgConnection,
     device: DeviceId,
     usage: &AgentUsage,
+    now: DateTime<Utc>,
 ) -> Result<(), Error> {
     if let Some(state) = usage.state {
         store::write_state(conn, device, state).await?;
     }
-    store::write_session_days(conn, device, &usage.session_days).await
+    store::write_session_days(conn, device, &usage.session_days).await?;
+    if let Some(accounts) = &usage.accounts {
+        accounts::record(conn, device, accounts, now).await?;
+    }
+    Ok(())
 }
 
 /// The sums `ask` asks for over the days from `first_day` to `last_day`, both included: one

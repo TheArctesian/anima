@@ -11,7 +11,9 @@ use chrono::NaiveDate;
 use daemon_core::agent_usage::{Source, UsageState, is_repository};
 
 use super::{
-    Ask, Dimension, DimensionSet, Error, default_days,
+    Ask, Dimension, DimensionSet, Error,
+    accounts::{self, graphql::AgentAccount},
+    default_days,
     grouping::{self, Placed},
     model::Group,
     prices::PRICES_AS_OF,
@@ -120,6 +122,8 @@ pub struct AgentUsageAnswer {
     rows_left_out: i32,
     total: AgentUsageRow,
     devices: Vec<AgentUsageDevice>,
+    /// The accounts that the devices report now, each with its devices (R-NEW-accountgroup).
+    accounts: Vec<AgentAccount>,
     prices_as_of: String,
 }
 
@@ -173,6 +177,10 @@ impl Query {
             .map(|Placed { device, group }| AgentUsageRow::of(device, group))
             .collect();
         let states = grouping::states_with_devices(&report.states, &devices);
+        let accounts = accounts::grouped(accounts::list(db).await.map_err(usage_error)?)
+            .into_iter()
+            .filter_map(|group| AgentAccount::of(group, &devices))
+            .collect();
         Ok(AgentUsageAnswer {
             first_day: ask.first_day.to_string(),
             last_day: ask.last_day.to_string(),
@@ -186,6 +194,7 @@ impl Query {
                     state: state.into(),
                 })
                 .collect(),
+            accounts,
             prices_as_of: PRICES_AS_OF.to_owned(),
         })
     }
