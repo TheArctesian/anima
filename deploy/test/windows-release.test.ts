@@ -60,7 +60,7 @@ test("the Windows gates use the pinned cargo-nextest of the Linux gates and chec
 test("only a run started by hand goes on after a failed gate, and it still fails at the end", () => {
   const step = workflow.jobs["windows-gates"]?.steps.find((each) => each.run?.includes("bun run gates"));
   expect((step as { env?: Record<string, string> } | undefined)?.env?.["EVENT"]).toBe("${{ github.event_name }}");
-  expect(step?.run).toContain("$keepGoing = if ($proof) { @('--keep-going') } else { @() }");
+  expect(step?.run).toContain("$keepGoing = @(); if ($proof) { $keepGoing = @('--keep-going') }");
   expect(step?.run).toContain("if ($gates -ne 0 -and -not $proof) { throw 'Windows gates failed' }");
   expect(step?.run?.trimEnd().endsWith("if ($gates -ne 0) { throw 'Windows gates failed' }")).toBe(true);
 });
