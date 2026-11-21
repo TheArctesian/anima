@@ -3,12 +3,9 @@
 //! agents' own programs; `agents.rs` and `jsonc.rs` decide what to write.
 
 use std::fs;
-use std::io::Read as _;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
@@ -87,8 +84,10 @@ mod program;
 mod windows;
 pub use program::{Checked, CommandError, check_command};
 use program::{Found, fixed_program};
+mod run;
 #[cfg(all(test, unix))]
 use program::{Part, open_to_others};
+use run::{Ran, run};
 
 /// Whether the agent is on this computer (MCP-027).
 #[must_use]
@@ -118,71 +117,6 @@ fn file_of(agent: &Agent, here: &Here) -> Option<PathBuf> {
         Way::File { place, .. } => Some(file(place, &here.home, here.macos, Path::is_file)),
         Way::Own { .. } => None,
     }
-}
-
-/// The longest time an agent's own program may take; it is then stopped and counts as failed.
-const RUN_LIMIT: Duration = Duration::from_secs(20);
-
-/// What an agent's own program did: its exit and what it wrote, or why it did not run.
-enum Ran {
-    Done {
-        success: bool,
-        stdout: Vec<u8>,
-    },
-    /// It ran past [`RUN_LIMIT`] and was stopped, or could not be started.
-    Failed,
-    /// A different user can replace it (MCP-033): it is not run.
-    Replaceable,
-    Missing,
-}
-
-/// Runs an agent's own program with fixed arguments and no shell (MCP-035), for at most
-/// [`RUN_LIMIT`].
-fn run(here: &Here, name: &str, arguments: &[String]) -> Ran {
-    let program = match fixed_program(here, name) {
-        Found::Fixed(path) => path,
-        Found::Replaceable => return Ran::Replaceable,
-        Found::Missing => return Ran::Missing,
-    };
-    // In the home folder: an agent must not read the project configuration of the folder the
-    // person happens to be in.
-    let Ok(mut child) = Command::new(program)
-        .args(arguments)
-        .current_dir(&here.home)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-    else {
-        return Ran::Failed;
-    };
-    let mut stdout = child.stdout.take();
-    let reader = std::thread::spawn(move || {
-        let mut out = Vec::new();
-        if let Some(stdout) = stdout.as_mut() {
-            let _ = stdout.take(1 << 20).read_to_end(&mut out);
-        }
-        out
-    });
-    let start = Instant::now();
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break Some(status),
-            Ok(None) if start.elapsed() < RUN_LIMIT => {
-                std::thread::sleep(Duration::from_millis(50));
-            }
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                break None;
-            }
-        }
-    };
-    let stdout = reader.join().unwrap_or_default();
-    status.map_or(Ran::Failed, |status| Ran::Done {
-        success: status.success(),
-        stdout,
-    })
 }
 
 /// What the agent's entry is now (MCP-027). A file way reads the file; an own way asks the program.
