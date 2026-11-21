@@ -11,6 +11,7 @@
   import { sourceName, stateWords } from './report/words';
   import type { UsageStore } from './store.svelte';
   import UsageFilters from './UsageFilters.svelte';
+  import AccountList from './view/AccountList.svelte';
   import RepositoryList from './view/RepositoryList.svelte';
   import SessionList from './view/SessionList.svelte';
   import { dayBars, repositoryLines, sharedHost, type Picked } from './view/shape';
@@ -83,7 +84,7 @@
 </script>
 
 <!-- The use of the AI agent programs (AIS-020): the repositories at the side; the totals with one bar for each day; the
-     use by program and model and by device (AIS-021, AIS-024); the single sessions (AIS-025, AIS-026). Counts only: the hub
+     use by program and model, by account (AIS-022) and by device (AIS-021, AIS-024); the single sessions (AIS-025, AIS-026). Counts only: the hub
      holds no text of a session. -->
 <section class="usage">
   <PageHeader title="Agent usage">
@@ -138,6 +139,9 @@
                 picked={shown === null ? null : pickedKey}
                 onPick={pick}
               />
+            {/if}
+            {#if view.accounts.length > 0}
+              <AccountList accounts={view.accounts} shares={view.shares} count={query.count} now={minute} />
             {/if}
             <ShareTable
               label="By device"
