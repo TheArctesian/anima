@@ -284,7 +284,7 @@ const fn answer_word(answer: &Answer) -> &'static str {
     }
 }
 
-const fn refusal_word(why: &Refusal) -> &'static str {
+pub(super) const fn refusal_word(why: &Refusal) -> &'static str {
     match why {
         Refusal::UnknownThread => "unknown thread",
         Refusal::FromAnAgent => "from a process of an agent",

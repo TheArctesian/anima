@@ -7,7 +7,7 @@ use std::time::Duration;
 mod copies;
 pub mod sign_in;
 
-pub use copies::{copies, executable, find, trusted, with_folder_of};
+pub use copies::{chosen_copy, copies, executable, find, trusted, with_folder_of};
 
 /// The mark before the environment in the output of the shell: a profile may print text first.
 const MARK: &str = "ANIMA-LOGIN-ENVIRONMENT-7f3c";

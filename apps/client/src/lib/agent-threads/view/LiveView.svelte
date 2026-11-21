@@ -36,6 +36,7 @@
   let now = $state(new Date());
   $effect(() => {
     if (row.state !== 'starting') return;
+    now = new Date();
     const tick = setInterval(() => (now = new Date()), 1000);
     return () => {
       clearInterval(tick);

@@ -85,23 +85,14 @@ impl Runner {
     /// Checks a new thread, counts it against the soft limit (THR-114) and asks the holder to
     /// start its program; the answer goes to the client when the holder answers.
     pub(super) async fn start(&mut self, new: NewThread, back: Caller) -> Result<(), Refusal> {
-        if !self.holder_fits {
-            return match self.holder_words() {
-                Some(said) => Err(Refusal::HolderOlder { said }),
-                None => Err(Refusal::Holder),
-            };
-        }
-        if self.running() >= self.limits.running {
-            return Err(Refusal::OverLimit {
-                limits: self.limits,
-            });
-        }
+        // A start whose copy is being asked counts against the soft limit too.
+        self.may_start(u32::try_from(self.asks.open.len()).unwrap_or(u32::MAX))?;
         chosen_folder(&new.folder, self.dir.parent().unwrap_or(&self.dir))?;
         if login::find(new.program, &self.env, login::executable, login::trusted).is_none() {
             self.ask_login_again(new.program).await;
         }
         let copies = login::copies(new.program, &self.env, login::executable, login::trusted);
-        let path = chosen_copy(new.program_path.as_deref(), &copies)?;
+        let path = login::chosen_copy(new.program_path.as_deref(), &copies)?;
         match self.silence.kept(&path) {
             Some(true) => {
                 let asking = Asking {
@@ -115,6 +106,8 @@ impl Runner {
             Some(false) => Err(self.not_answered(new.program, &path, &copies)),
             None => {
                 // The ask runs away from the loop; the start goes on when it answers (TH97).
+                // One ask for each copy at a time: a later start waits for the same answer.
+                let asked = self.asks.open.values().any(|open| open.path == path);
                 let env = login::with_folder_of(self.env.clone(), &path);
                 let ask = super::silence::ask(path.clone(), copies.clone(), env);
                 let sender = self.asks.sender.clone();
@@ -129,30 +122,71 @@ impl Runner {
                         copies,
                     },
                 );
-                tokio::spawn(async move {
-                    // A runner that ended does not need the answer.
-                    let _ = sender.send((id, ask.await)).await;
-                });
+                if !asked {
+                    tokio::spawn(async move {
+                        // A runner that ended does not need the answer.
+                        let _ = sender.send((id, ask.await)).await;
+                    });
+                }
                 Ok(())
             }
         }
     }
 
     /// The answers of the copies for the start `id`: it goes on, or it is refused with words.
+    /// Each start that waited for that copy goes on in its order, or is refused with words.
     pub(super) async fn asked(&mut self, id: u64, answers: super::silence::Answers) {
         self.silence.keep(&answers);
-        let Some(asking) = self.asks.open.remove(&id) else {
+        let Some(path) = self.asks.open.get(&id).map(|asking| asking.path.clone()) else {
             return;
         };
-        let back = asking.back.clone();
-        let refusal = if self.silence.kept(&asking.path) == Some(true) {
-            self.start_checked(asking).await.err()
-        } else {
-            Some(self.not_answered(asking.new.program, &asking.path, &asking.copies))
-        };
-        if let Some(why) = refusal {
-            back.answer(super::holder_events::refused(why));
+        // The answer itself decides: a copy replaced while it was asked keeps this answer.
+        let answered = answers
+            .iter()
+            .any(|(copy, version)| *copy == path && version.is_some());
+        let waiting: Vec<u64> = self
+            .asks
+            .open
+            .iter()
+            .filter(|(_, asking)| asking.path == path)
+            .map(|(id, _)| *id)
+            .collect();
+        for id in waiting {
+            let Some(asking) = self.asks.open.remove(&id) else {
+                continue;
+            };
+            let back = asking.back.clone();
+            let refusal = if answered {
+                self.start_checked(asking).await.err()
+            } else {
+                Some(self.not_answered(asking.new.program, &asking.path, &asking.copies))
+            };
+            if let Some(why) = refusal {
+                self.note(
+                    super::log::Kind::Refusal,
+                    None,
+                    super::calls::refusal_word(&why),
+                );
+                back.answer(super::holder_events::refused(why));
+            }
         }
+    }
+
+    /// Whether a new thread may start now: a holder that fits (THR-113), and fewer than the soft
+    /// limit of running threads with the `asking` starts that wait for an answer (THR-114).
+    fn may_start(&self, asking: u32) -> Result<(), Refusal> {
+        if !self.holder_fits {
+            return match self.holder_words() {
+                Some(said) => Err(Refusal::HolderOlder { said }),
+                None => Err(Refusal::Holder),
+            };
+        }
+        if self.running().saturating_add(asking) >= self.limits.running {
+            return Err(Refusal::OverLimit {
+                limits: self.limits,
+            });
+        }
+        Ok(())
     }
 
     /// The refusal of a start whose copy did not answer, with the other copies that did.
@@ -170,6 +204,8 @@ impl Runner {
             path,
             copies,
         } = asking;
+        // The holder or the count can change while the copy is asked.
+        self.may_start(0)?;
         let id = Uuid::now_v7();
         let (row, action) = self.prepared(&new, id, &path)?;
         let mut notice = crate::threads::notice::of_folder(&row.folder);
@@ -301,20 +337,4 @@ pub(super) fn chosen_folder(folder: &Path, daemon: &Path) -> Result<PathBuf, Ref
     } else {
         Err(Refusal::FolderNotPermitted)
     }
-}
-
-/// The copy of the program that a start runs: the one it named, when that is one of the
-/// `copies` the runner found, else the first of them (TH97). A path that is not a found copy is
-/// refused, so that a start never runs a file of its choice.
-fn chosen_copy(named: Option<&Path>, copies: &[PathBuf]) -> Result<PathBuf, Refusal> {
-    let Some(named) = named else {
-        return copies.first().cloned().ok_or(Refusal::ProgramNotFound);
-    };
-    let real = |path: &Path| std::fs::canonicalize(path).ok();
-    let wanted = real(named).ok_or(Refusal::ProgramNotFound)?;
-    copies
-        .iter()
-        .find(|copy| real(copy).as_ref() == Some(&wanted))
-        .cloned()
-        .ok_or(Refusal::ProgramNotFound)
 }

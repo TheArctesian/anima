@@ -91,6 +91,32 @@ pub fn copies(
         .collect()
 }
 
+/// The copy of the program that a start runs: the one it named, when that is one of the
+/// `copies` the runner found, else the first of them (TH97). A path that is not a found copy is
+/// refused, so that a start never runs a file of its choice.
+///
+/// # Errors
+///
+/// `ProgramNotFound` when no copy was found, or the named path is not one of them.
+pub fn chosen_copy(
+    named: Option<&Path>,
+    copies: &[PathBuf],
+) -> Result<PathBuf, agent_threads::control::Refusal> {
+    let Some(named) = named else {
+        return copies
+            .first()
+            .cloned()
+            .ok_or(agent_threads::control::Refusal::ProgramNotFound);
+    };
+    let real = |path: &Path| std::fs::canonicalize(path).ok();
+    let wanted = real(named).ok_or(agent_threads::control::Refusal::ProgramNotFound)?;
+    copies
+        .iter()
+        .find(|copy| real(copy).as_ref() == Some(&wanted))
+        .cloned()
+        .ok_or(agent_threads::control::Refusal::ProgramNotFound)
+}
+
 /// Whether `folder` belongs to this user or to the system and no other user can write it.
 #[must_use]
 pub fn trusted(folder: &Path) -> bool {
