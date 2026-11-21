@@ -125,3 +125,62 @@ impl Answer {
         }
     }
 }
+
+/// `text` without the characters that hide or reorder what the person reads: the controls but
+/// the new line and the tab, and the marks of direction (THR-125).
+#[must_use]
+pub(super) fn visible(text: &str) -> String {
+    text.chars()
+        .filter(|&c| {
+            let hidden = c.is_control() && c != '\n' && c != '\t';
+            let direction = matches!(
+                c,
+                '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}'
+            );
+            !hidden && !direction
+        })
+        .collect()
+}
+
+/// A rule that Claude Code suggests, in words (`Bash(npm test)`), when it adds allow rules. A
+/// rule that sets the mode or adds a folder gives `None` (THR-030).
+#[must_use]
+pub(super) fn rule_words(rule: &serde_json::Value) -> Option<String> {
+    if rule["type"] != "addRules" || rule["behavior"] != "allow" {
+        return None;
+    }
+    let words: Vec<String> = rule["rules"]
+        .as_array()?
+        .iter()
+        .map(|one| match one["ruleContent"].as_str() {
+            Some(content) => format!("{}({content})", super::text_of(&one["toolName"])),
+            None => super::text_of(&one["toolName"]),
+        })
+        .collect();
+    (!words.is_empty()).then(|| visible(&words.join(", ")))
+}
+
+/// The change that a file tool of Claude Code asks for, as lines of `-` and `+`.
+#[must_use]
+pub(super) fn claude_diff(tool: &str, input: &serde_json::Value) -> Option<String> {
+    let pair = |old: &serde_json::Value, new: &serde_json::Value| {
+        let mut lines: Vec<String> = super::text_of(old)
+            .lines()
+            .map(|line| format!("- {line}"))
+            .collect();
+        lines.extend(super::text_of(new).lines().map(|line| format!("+ {line}")));
+        lines.join("\n")
+    };
+    let text = match tool {
+        "Write" => pair(&serde_json::Value::Null, &input["content"]),
+        "Edit" => pair(&input["old_string"], &input["new_string"]),
+        "MultiEdit" => input["edits"]
+            .as_array()?
+            .iter()
+            .map(|edit| pair(&edit["old_string"], &edit["new_string"]))
+            .collect::<Vec<_>>()
+            .join("\n…\n"),
+        _ => return None,
+    };
+    Some(visible(&text))
+}
