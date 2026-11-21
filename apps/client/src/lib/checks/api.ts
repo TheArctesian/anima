@@ -103,12 +103,16 @@ void graphql(`
         warnDays
         timeoutMs
       }
+      ...DockerCheckConfig
+      ...SystemdCheckConfig
+      ...SnmpCheckConfig
+      ...TailscalePingCheckConfig
     }
   }
 `);
 
-// The Phase 2 config shapes (CHK-009). Not spread into any document yet: the hub declares these types with
-// WP-29, and a query that selected them earlier would fail validation. Codegen reads them for the form's types.
+// The Phase 2 config shapes (CHK-009), spread into `CheckFields` above: the hub declares them (WP-29), so the form
+// opens a saved Docker, systemd, SNMP or Tailscale ping check with its own settings.
 void graphql(`
   fragment DockerCheckConfig on DockerConfig {
     __typename

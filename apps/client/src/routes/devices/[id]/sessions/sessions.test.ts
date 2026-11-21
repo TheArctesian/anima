@@ -22,6 +22,8 @@ it.each([
   [59.9, '59 s'],
   [61, '1 min 1 s'],
   [3600, '1 h 0 min'],
+  [86_399, '23 h 59 min'],
+  [93_600, '1 d 2 h'],
   [-5, '0 s'],
 ])('D-10: %d seconds is %j', (seconds, text) => {
   expect(durationText(seconds)).toBe(text);

@@ -6,6 +6,7 @@ import { device } from '../screen/screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import DeviceCard from '../card/DeviceCard.svelte';
 import DeviceTable from '../card/DeviceTable.svelte';
+import { WARNING_MEANING, warningLines } from './actions';
 
 endTransitionsAtOnce();
 
@@ -194,15 +195,23 @@ describe('Web menu closing (WEB-003)', () => {
 });
 
 describe('warning badge (RA-020, D-6)', () => {
-  it('RA-020: a card with warnings shows the word Warning and lists each warning in the tooltip', () => {
+  /** The badge's button: its name is the word and what the word means. */
+  const badgeButton = () => document.querySelector<HTMLButtonElement>('button:has(.badge)');
+
+  it('RA-020: a card with warnings shows the word Warning, says what it means and lists each warning in its tip', () => {
     showCard({ accessWarnings: ['RDP_SECURITY', 'UNENCRYPTED_VNC'] });
     const badge = document.querySelector<HTMLElement>('.badge');
     expect(badge?.textContent.replace(/\p{Co}/gu, '').trim()).toBe('Warning');
-    // Below bp-compact the word is visually hidden but stays in its own element, so the badge keeps its name (RA-020, UI-003).
+    // Below bp-compact the word is visually hidden but stays in its own element (RA-020, UI-003).
     expect(badge?.querySelector('.label')?.textContent).toBe('Warning');
-    expect(badge?.title.split('\n')).toHaveLength(2);
-    expect(badge?.title).toContain('RDP');
-    expect(badge?.title).toContain('VNC');
+    const lines = warningLines(['RDP_SECURITY', 'UNENCRYPTED_VNC']);
+    // The spoken name carries all of it, so a screen reader needs no tip.
+    expect(badgeButton()?.getAttribute('aria-label')).toBe(`Warning: ${WARNING_MEANING} ${lines.join(' ')}`);
+    badgeButton()?.click();
+    flushSync();
+    const tip = document.querySelector('[role="status"]');
+    expect(tip?.textContent).toContain(WARNING_MEANING);
+    expect([...(tip?.querySelectorAll('li') ?? [])].map((line) => line.textContent)).toEqual(lines);
   });
 
   it('RA-020: a card without warnings shows no badge, and a table row with warnings shows one', () => {
@@ -214,6 +223,6 @@ describe('warning badge (RA-020, D-6)', () => {
       props: { devices: [device('a', { accessWarnings: ['IGNORED_CERTIFICATE'] })], beats: new Map(), onConnect: vi.fn() },
     });
     flushSync();
-    expect(document.querySelector('tbody .badge')?.getAttribute('title')).toContain('certificate');
+    expect(document.querySelector('tbody button:has(.badge)')?.getAttribute('aria-label')).toBe(`Warning: ${WARNING_MEANING} ${warningLines(['IGNORED_CERTIFICATE'])[0] ?? ''}`);
   });
 });

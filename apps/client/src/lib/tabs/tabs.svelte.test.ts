@@ -111,6 +111,53 @@ describe('Tabs (UI redesign, DEV-020)', () => {
   });
 });
 
+describe('a strip too narrow for its tabs (NAV-005, UI-003)', () => {
+  const ICONS: readonly TabSpec[] = ITEMS.map((item) => ({ ...item, icon: 'carbon:dashboard' }));
+
+  /** Gives the strip a visible width and a content width, as layout would, then lets it measure again. */
+  function measure(strip: HTMLElement, client: number, content: number): void {
+    Object.defineProperty(strip, 'clientWidth', { value: client, configurable: true });
+    Object.defineProperty(strip, 'scrollWidth', { value: content, configurable: true });
+    strip.dispatchEvent(new Event('scroll'));
+    flushSync();
+  }
+
+  function strip(items: readonly TabSpec[]): HTMLElement {
+    app = mount(Tabs, { target: document.body, props: { items, selected: 'overview', onSelect: vi.fn(), label: 'Device', idPrefix: 'device', preference: { reduced: true } } });
+    flushSync();
+    const list = document.querySelector<HTMLElement>('[role="tablist"]');
+    if (list === null) throw new Error('no tablist');
+    return list;
+  }
+
+  it('UI-003: the icons go first and the words stay; with room again the icons come back', () => {
+    const list = strip(ICONS);
+    measure(list, 400, 600);
+    expect(list.classList.contains('compact')).toBe(true);
+    expect(tabButtons().map((tab) => tab.querySelector('.word')?.textContent)).toEqual(['Overview', 'Checks', 'Sessions', 'Logs', 'Settings']);
+    measure(list, 500, 500);
+    expect(list.classList.contains('compact')).toBe(true);
+    measure(list, 620, 620);
+    expect(list.classList.contains('compact')).toBe(false);
+  });
+
+  it('NAV-005: an end with tabs past it fades and has an arrow out of the tab order, which scrolls the strip', () => {
+    const list = strip(ITEMS);
+    measure(list, 300, 600);
+    expect(list.hasAttribute('data-more-after')).toBe(true);
+    const arrow = document.querySelector<HTMLButtonElement>('.arrow.end');
+    expect(arrow?.tabIndex).toBe(-1);
+    expect(arrow?.getAttribute('aria-hidden')).toBe('true');
+    expect(document.querySelector('.arrow.start')).toBeNull();
+    const scrollBy = vi.fn();
+    list.scrollBy = scrollBy;
+    arrow?.click();
+    expect(scrollBy).toHaveBeenCalledWith({ left: 225, behavior: 'instant' });
+    measure(list, 600, 600);
+    expect(document.querySelector('.arrow')).toBeNull();
+  });
+});
+
 it('NAV-005: a focused tab past either edge of the strip is scrolled into view clear of the fade, and one inside it is left alone', () => {
   expect(scrolledToShow({ start: 0, size: 200 }, { start: 300, size: 80 }, 32)).toBe(212);
   expect(scrolledToShow({ start: 150, size: 200 }, { start: 100, size: 80 }, 32)).toBe(68);
