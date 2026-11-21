@@ -339,7 +339,6 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
         let outcome = super::commands::run(&shared, command).await;
         drop(one);
         if ends && outcome == Outcome::Ok {
-            let _ = quit.send(()).await;
             // A command after the Quit would start a program in a holder that ends.
             quitting = true;
             break;
@@ -351,8 +350,9 @@ async fn serve(shared: Arc<Mutex<Shared>>, stream: UnixStream, connection: Conne
         state.connection = None;
     }
     if quitting {
-        // The answer to the Quit goes out before the link closes.
+        // The answer to the Quit goes out before the holder ends.
         let _ = tokio::time::timeout(std::time::Duration::from_secs(1), writer).await;
+        let _ = quit.send(()).await;
     } else {
         writer.abort();
     }

@@ -33,11 +33,8 @@ impl Ending {
     fn of(slot: &Slot, with_root: bool) -> Self {
         Self {
             root: slot.pid,
-            since: if with_root {
-                None
-            } else {
-                slot.started.clone()
-            },
+            // An unknown start reads as no time, so that the sweep after a turn ends nothing.
+            since: (!with_root).then(|| slot.started.clone().unwrap_or_default()),
             gone: slot.reaped || slot.exit.is_some(),
             spare: if with_root {
                 tree::Known::new()

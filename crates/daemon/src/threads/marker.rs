@@ -64,6 +64,11 @@ pub async fn end_marked(thread: &str, keep: &Keep<'_>) -> Ended {
             // keeps them.
             let kept = tree::spare_with_children(&table, keep.spare);
             let since = keep.since.and_then(tree::start_time);
+            if keep.since.is_some() && since.is_none() {
+                // The start of the program does not read: no process is proved to be of it.
+                unproven = true;
+                marked.clear();
+            }
             marked.retain(|pid| !kept.contains(pid) && started_since(&table, *pid, since));
         } else {
             // Without the table nothing proves which process is spared or how old it is:

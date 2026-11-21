@@ -15,7 +15,6 @@ impl Runner {
         sent: Option<wire::Command>,
         why: HolderRefusal,
     ) {
-        self.quit_not_taken(sent.as_ref());
         let Some(wire::Command {
             action: Action::Write { thread, .. },
             ..

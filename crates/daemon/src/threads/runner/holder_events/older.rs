@@ -2,7 +2,7 @@
 //! words for the person, and its end when no program of a thread runs.
 
 use super::super::Runner;
-use crate::threads::wire::{Action, Command};
+use crate::threads::wire::Action;
 
 /// What the runner knows of the holder from its hello and from the Quit it sent (THR-113, TH98).
 #[derive(Default)]
@@ -23,6 +23,8 @@ pub(in crate::threads::runner) struct Standing {
     pub quitting: bool,
     /// When the runner last asked the older holder to end.
     pub quit: Option<std::time::Instant>,
+    /// The command of the Quit that waits for its answer.
+    pub quit_command: Option<u64>,
 }
 
 impl Runner {
@@ -38,16 +40,27 @@ impl Runner {
         if self.holder.older && !asked && self.running() == 0 {
             self.holder.quit = Some(std::time::Instant::now());
             self.holder.quitting = true;
-            self.command(Action::Quit).await;
+            self.holder.quit_command = self.command(Action::Quit).await;
+            // A Quit that did not reach the holder ends nothing: starts go on.
+            self.holder.quitting = self.holder.quit_command.is_some();
         }
     }
 
-    /// The holder refused a command; when it was the Quit, a program runs, the holder stays and
-    /// starts go on.
-    pub(in crate::threads::runner) fn quit_not_taken(&mut self, sent: Option<&Command>) {
-        if sent.is_some_and(|command| matches!(command.action, Action::Quit)) {
+    /// The answer to the Quit `command`, if it is that; a refusal means that a program runs, so
+    /// the holder stays and starts go on. True when the answer was the Quit's.
+    pub(in crate::threads::runner) fn quit_answered(
+        &mut self,
+        command: u64,
+        outcome: &crate::threads::wire::Outcome,
+    ) -> bool {
+        if self.holder.quit_command != Some(command) {
+            return false;
+        }
+        self.holder.quit_command = None;
+        if matches!(outcome, crate::threads::wire::Outcome::Refused { .. }) {
             self.holder.quitting = false;
         }
+        true
     }
 
     /// The words of a holder that is not of the build of this runner, while it runs (TH98).

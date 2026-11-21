@@ -131,6 +131,8 @@ pub async fn ps_output(args: &[&str]) -> Option<Vec<u8>> {
         .args(args)
         .env_clear()
         .env("LC_ALL", "C")
+        // Start times in UTC: no change of summer time makes a child look older than its parent.
+        .env("TZ", "UTC")
         .kill_on_drop(true)
         .output();
     let output = tokio::time::timeout(PS_WAIT, run).await.ok()?.ok()?;

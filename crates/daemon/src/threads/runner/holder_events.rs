@@ -45,6 +45,7 @@ impl Runner {
     async fn hello(&mut self, version: u32, held: Vec<Held>, build: Option<&str>) {
         self.holder.fits = version == wire::VERSION;
         self.holder.quitting = false;
+        self.holder.quit_command = None;
         // Compared with the file that a new holder would start from, so that a holder that a
         // new start would not change is never replaced (no loop of ends and starts).
         // A holder of the same file is never older, also when its protocol differs: then this
@@ -244,6 +245,9 @@ impl Runner {
 
     /// The answer of the holder to a command that a call waits for.
     async fn done(&mut self, command: u64, outcome: HolderOutcome) {
+        if self.quit_answered(command, &outcome) {
+            return;
+        }
         let sent = self.unanswered.remove(&command);
         let Some(waits) = self.waits.remove(&command) else {
             if let HolderOutcome::Refused { why } = outcome {
