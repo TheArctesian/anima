@@ -5,6 +5,8 @@
 use chrono::NaiveDate;
 use proptest::prelude::*;
 
+mod accounts;
+
 use super::*;
 use crate::agent_usage::{Source, UsageState};
 use crate::wire::{BatchAgentUsage, BatchModel, BatchSessionDay};

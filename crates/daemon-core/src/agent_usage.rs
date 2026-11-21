@@ -8,6 +8,7 @@
 //! configuration. The daemon reads the files (I/O); the hub checks what arrives
 //! (`wire::BatchAgentUsage`).
 
+pub mod account;
 mod claude;
 mod codex;
 mod content;
@@ -163,4 +164,7 @@ pub struct SessionDay {
 pub struct AgentUsage {
     pub state: Option<UsageState>,
     pub session_days: Vec<SessionDay>,
+    /// The accounts of the known sources; `None` when the batch sent no `accounts` member, which
+    /// keeps what the hub has (AIS-022, R-313).
+    pub accounts: Option<Vec<account::Account>>,
 }
