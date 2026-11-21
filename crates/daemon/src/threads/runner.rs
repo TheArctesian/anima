@@ -237,6 +237,8 @@ impl Runner {
         tracing::warn!("the link to the holder closed; connecting again");
         self.holder.fits = false;
         self.holder.newer = false;
+        // Until the next hello nothing is known of the holder: no Quit goes to a new one.
+        self.holder.older = false;
         let next = self.link.next_id();
         self.link = link::reach_patiently(&self.program, &self.dir).await;
         self.link.go_on_from(next);
