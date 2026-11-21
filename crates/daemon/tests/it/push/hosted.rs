@@ -1,7 +1,9 @@
 //! HM-T35: the daemon of a hosted hub, which reaches its hub on a socket, deletes a token that
 //! the hub refuses and ends, so that `anima-local-hub` enrols it again at its next start.
 
+use std::fs::Permissions;
 use std::future::pending;
+use std::os::unix::fs::PermissionsExt as _;
 use std::time::Duration;
 
 use anima_daemon::config::Config;
@@ -45,6 +47,8 @@ fn enrolled_beside(socket: &std::path::Path, dir: &std::path::Path) -> (Home, st
 async fn hmd_046_a_hosted_daemon_deletes_a_refused_token_and_ends() {
     for code in [RefusalCode::TokenRefused, RefusalCode::WrongDevice] {
         let dir = tempfile::tempdir().expect("a folder");
+        // The socket's folder must be private, or the daemon sends no token there (K8 Section 1).
+        std::fs::set_permissions(dir.path(), Permissions::from_mode(0o700)).expect("mode");
         let socket = dir.path().join("own.sock");
         let hub = FakeHub::behind_socket(&socket);
         hub.queue_push([Reply::refuse(code)]);
@@ -52,7 +56,7 @@ async fn hmd_046_a_hosted_daemon_deletes_a_refused_token_and_ends() {
         let ended = tokio::time::timeout(LIMIT, runtime::run(&home, Some(data), pending())).await;
         assert!(
             matches!(ended, Ok(Err(RunError::TokenRefused))),
-            "{code:?}: the run ends on the refusal"
+            "{code:?}: the run ends on the refusal, not with {ended:?}"
         );
         assert!(
             TokenStore::open(&home).load().expect("a store").is_none(),
