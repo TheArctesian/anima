@@ -330,6 +330,7 @@ dependencies = [
  "anima-database",
  "anima-gateway",
  "anima-hub",
+ "anima-route-proxy",
  "anima-windows",
  "argon2",
  "async-graphql",
@@ -414,6 +415,24 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "zeroize",
+]
+
+[[package]]
+name = "anima-route-proxy"
+version = "0.1.0"
+dependencies = [
+ "rcgen",
+ "rustls",
+ "rustls-pki-types",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-rustls",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
  "zeroize",
 ]
 
@@ -10583,6 +10602,7 @@ version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
 dependencies = [
+ "serde",
  "zeroize_derive",
 ]
 

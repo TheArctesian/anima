@@ -3456,6 +3456,73 @@ input PlaceSplitInput {
   links: [ID!]
 }
 
+# ---------------------------------------------------------------- application routes (R-NEW-hubrouting, R-NEW-buildnow; HOST-046; task H21)
+
+"Whether the name of a route is proven to belong to this hub (Section 12.4 of hosted-applications-stage-2.md). A proven name is LOST only after 3 failed reads in a row."
+enum ApplicationRouteProof {
+  WAITING
+  PROVEN
+  LOST
+}
+
+"What a route waits for before it serves, in the order the hub checks."
+enum ApplicationRouteWait {
+  "The name is not proven, or it was lost."
+  PROOF
+  "The second consent at the machine (OD-HOST-43). Nothing can give it yet: no route serves in this version."
+  MACHINE_CONSENT
+  "The route has no certificate that is valid now."
+  CERTIFICATE
+}
+
+"One public name of one application, with its target fixed when the name was added. It holds no certificate and no key."
+type ApplicationRoute {
+  id: ID!
+  "A DNS name in lower case."
+  name: String!
+  applicationId: ID!
+  deviceId: ID!
+  "The port that the applications program recorded. Never 22, 5900, 3389 or a port of Anima."
+  port: Int!
+  proof: ApplicationRouteProof!
+  "Failed reads of the proof in a row."
+  failedReads: Int!
+  "The name of the TXT record that proves the name, as _anima.<name>; null on a hub that a person hosts, where the name must resolve to the public address of the hub."
+  proofRecordName: String
+  "The text of that TXT record: it names this hub and the token of the route. Null as proofRecordName."
+  proofRecordValue: String
+  machineConsent: Boolean!
+  "The end of the validity of the certificate; null with none."
+  certificateNotAfter: DateTime
+  "Null when the route serves now."
+  waitsFor: ApplicationRouteWait
+  checkedAt: DateTime
+  requests: Float!
+  bytesIn: Float!
+  bytesOut: Float!
+  "Connections that a limit of the route refused."
+  refused: Float!
+  createdAt: DateTime!
+}
+
+"A name that was added, with what the hub warns about."
+type ApplicationRouteAdded {
+  route: ApplicationRoute!
+  "The name and the hub share a domain: the cookie attribute SameSite does not stop a request from the page of the application (SF-NEW-routeabuse)."
+  sameSiteAsHub: Boolean!
+}
+
+"What a person gives to add a public name to an application."
+input ApplicationRouteInput {
+  "A DNS name: never the name of the hub or below it, never at or below a domain that holds a cookie of a hub, never a wildcard."
+  name: String!
+  applicationId: ID!
+  deviceId: ID!
+  port: Int!
+  "Whether the application holds the socket of the engine. Such an application is never made public (Section 10)."
+  holdsEngineSocket: Boolean!
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -3539,6 +3606,10 @@ type Query {
   composeFileCheck(file: String!): ComposeFileCheck!
   "The Compose file of one `docker run` command (HOST-022). The hub reads the words of the command with its own reader: it expands nothing, runs nothing, reaches no device and keeps nothing; it writes the command to no log, no event and no error (LOG-007). A command that the reader cannot read has a refusal, not an error. An option with no key in a Compose file is in notConverted. Complexity 100: one request holds at most four. Open to a read key."
   composeFromDockerRun(command: String!): ComposeFromDockerRun!
+  "The public names of one application, or of each, by name (HOST-046, task H21). No field holds a certificate or a key. Open to a read key."
+  applicationRoutes(applicationId: ID): [ApplicationRoute!]!
+  "One route with its state; null when no route has this ID. Open to a read key."
+  applicationRoute(id: ID!): ApplicationRoute
 
   # Timeline and record links (operator, 2026-11-16; ruling number to be assigned; K-E3, K-E4)
   "What happened from `from` up to, not including, `to`, newest first: by start, then by reference, both descending. Entries from the clocks of different machines are in that order only by their recorded instants, not in an exact order (TML-011). categories null: all; empty: none. first is 1 to 200. VALIDATION when to is not after from."
@@ -3677,6 +3748,12 @@ type Mutation {
   dismissWebInterfaceSuggestion(checkId: ID!): ID!
   "Pins the certificate and writes an audit entry (WEB-008, WEB-009). Login or browser token only (D-23, R-100)."
   acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
+  "Adds a public name to an application and gives the token of its proof (HOST-046, task H21; SF-NEW-routepublish). The device, the port and the address are fixed now: a change is a removal and a new name. VALIDATION for a refused name, port or address; CONFLICT when a route has the name, the application has routes to a different target, or the application holds the socket of the engine; FORBIDDEN when the operator has no second factor. Login or browser token only (D-23, R-100)."
+  addApplicationRoute(input: ApplicationRouteInput!): ApplicationRouteAdded!
+  "Reads the proof of the name once and keeps its new state. One failed read changes nothing. Login or browser token only (D-23, R-100)."
+  checkApplicationRoute(id: ID!): ApplicationRoute!
+  "Removes a public name with its certificate and its key. Returns the removed ID. Login or browser token only (D-23, R-100)."
+  removeApplicationRoute(id: ID!): ID!
 
   # Phase 3
   "Signed out (D-4), or a login or browser token; never an API key (D-23, R-100). Sets the __Host-anima cookie; refused unless Origin is the public origin."

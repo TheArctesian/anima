@@ -122,6 +122,10 @@ entity_id! {
     SealedRecordId,
     /// An offer of the vault key to a new client (K-E5 Section 3).
     KeyOfferId,
+    /// An application on a machine, as the applications program names it (HOST-008).
+    ApplicationId,
+    /// A public name of an application on the hub (HOST-046, task H21).
+    RouteId,
 }
 
 #[cfg(test)]

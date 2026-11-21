@@ -10,9 +10,11 @@ mod origin;
 mod paths;
 use paths::{optional_path, optional_root, optional_socket, remote_drive_path};
 mod releases;
+mod routes;
 
 pub use link::{LINK_DEVICES, dial_socket};
 pub use releases::Releases;
+pub use routes::Routes;
 
 const LISTEN: &str = "ANIMA_LISTEN";
 const DATABASE_URL_FILE: &str = "ANIMA_DATABASE_URL_FILE";
@@ -81,6 +83,8 @@ pub struct Config {
     /// The folder of the sealed file pieces (K-E4 Section 9, FIL-001). `None`: the hub has no
     /// file store.
     pub files_dir: Option<PathBuf>,
+    /// The public names of applications (task H21); off by default.
+    pub routes: Routes,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -137,6 +141,8 @@ pub enum Error {
     LinkControlAlone,
     #[error("{} {}", link::HOSTED_CLOUD_KEY_FILE, link::HOSTED_RULE)]
     HostedWithoutLink,
+    #[error("{variable} is not valid")]
+    Routes { variable: &'static str },
     #[error("{present} is set but {missing} is not")]
     TlsIncomplete {
         present: &'static str,
@@ -244,21 +250,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
     let listen = value(env, LISTEN, "127.0.0.1:8443")?;
     let tls_cert_file = optional_path(env, TLS_CERT_FILE);
     let tls_key_file = optional_path(env, TLS_KEY_FILE);
-    match (&tls_cert_file, &tls_key_file) {
-        (Some(_), None) => {
-            return Err(Error::TlsIncomplete {
-                present: TLS_CERT_FILE,
-                missing: TLS_KEY_FILE,
-            });
-        }
-        (None, Some(_)) => {
-            return Err(Error::TlsIncomplete {
-                present: TLS_KEY_FILE,
-                missing: TLS_CERT_FILE,
-            });
-        }
-        _ => {}
-    }
+    tls_pair(tls_cert_file.as_ref(), tls_key_file.as_ref())?;
     let listen: SocketAddr = listen.parse().map_err(|source| Error::Listen {
         value: listen.to_owned(),
         source,
@@ -300,7 +292,23 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         releases: releases::from_env(env)?,
         data_key_dir: optional_root(env, DATA_KEY_DIR)?,
         files_dir: optional_root(env, FILES_DIR)?,
+        routes: routes::from_env(env)?,
     })
+}
+
+/// Refuses half of a TLS pair: a certificate with no key, or a key with no certificate.
+fn tls_pair(cert: Option<&PathBuf>, key: Option<&PathBuf>) -> Result<(), Error> {
+    match (cert, key) {
+        (Some(_), None) => Err(Error::TlsIncomplete {
+            present: TLS_CERT_FILE,
+            missing: TLS_KEY_FILE,
+        }),
+        (None, Some(_)) => Err(Error::TlsIncomplete {
+            present: TLS_KEY_FILE,
+            missing: TLS_CERT_FILE,
+        }),
+        _ => Ok(()),
+    }
 }
 
 #[cfg(test)]
