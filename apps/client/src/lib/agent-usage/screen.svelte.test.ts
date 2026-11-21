@@ -275,3 +275,27 @@ it('AIS-025: sessions the hub did not send are counted under the list', async ()
   await open();
   expect(text()).toContain('3 older sessions are not shown. Choose fewer days or a repository.');
 });
+
+it('AIS-022 (R-313): an account groups its devices under one bar for each limit, with the share of each device', async () => {
+  await open();
+  const cards = [...document.querySelectorAll('li.card')];
+  expect(cards.map((card) => card.getAttribute('aria-label'))).toEqual(['Codex account 3f9a12c4', 'Claude Code account a71c0e5b']);
+  const codex = cards[0]?.textContent ?? '';
+  expect(codex).toContain('Pro');
+  expect(codex).toContain('reported 20 minutes ago');
+  expect(codex).toMatch(/5 hours\s*35 % used · starts again/);
+  expect(codex).toMatch(/7 days\s*82 % used · starts again/);
+  const meters = [...(cards[0]?.querySelectorAll('[role=meter]') ?? [])].map((meter) => [meter.getAttribute('aria-label'), meter.getAttribute('aria-valuenow')]);
+  expect(meters).toEqual([['5 hours used', '35'], ['7 days used', '82']]);
+  const shares = [...(cards[0]?.querySelectorAll('.device') ?? [])].map((device) => device.textContent.replace(/\s+/g, ' ').trim());
+  expect(shares).toEqual(['mac-mini 65 %', 'gpu-box 35 %']);
+  expect(cards[1]?.textContent).toContain('The program reports no limit yet.');
+  expect(text()).not.toContain(ANSWER.accounts[0]?.key);
+});
+
+it('with no account reported the page has no part By account', async () => {
+  hub = fakeUsageHub({ ...ANSWER, accounts: [] });
+  await open();
+  expect(text()).not.toContain('By account');
+  expect(text()).toContain('By device');
+});

@@ -126,10 +126,38 @@ export function agentUsageFields(state: HubState): Record<string, unknown> {
           .toSorted((a, b) => String(a.name).localeCompare(String(b.name)))
           .map((device) => ({ device: deviceOf(state, String(device.id)), state: STATES[String(device.name)] })),
         pricesAsOf: PRICES_AS_OF,
+        accounts: accountsOf(state, devices.map((device) => String(device.name))),
       };
     },
     agentSessions: (args: Args & { first?: number }): Row => sessionsOf(state, args),
   };
+}
+
+/**
+ * The accounts of the programs, as keys only (AIS-022 as R-313 changed it): one Codex account that the mac-mini and the
+ * gpu-box share, near its weekly limit, and the Claude Code account of the mac-mini, which reports no limit.
+ */
+function accountsOf(state: HubState, names: readonly string[]): Row[] {
+  const now = state.now().getTime();
+  const all = state.fixtures.devices;
+  const devicesOf = (wanted: readonly string[]) =>
+    wanted.filter((name) => names.includes(name)).map((name) => deviceOf(state, String(all.find((device) => device.name === name)?.id ?? '')));
+  const accounts = [
+    {
+      key: '3f9a12c4'.padEnd(64, '7'),
+      shortKey: '3f9a12c4',
+      source: 'CODEX',
+      plan: 'Pro',
+      reportedAt: new Date(now - 2 * 60_000).toISOString(),
+      devices: devicesOf(['mac-mini', 'gpu-box']),
+      limits: [
+        { window: 'five_hour', usedPercent: 35, resetsAt: new Date(now + 3 * 3_600_000).toISOString(), reached: false },
+        { window: 'seven_day', usedPercent: 82, resetsAt: new Date(now + 4 * DAY_MS).toISOString(), reached: false },
+      ],
+    },
+    { key: 'a71c0e5b'.padEnd(64, '7'), shortKey: 'a71c0e5b', source: 'CLAUDE_CODE', plan: 'Max', reportedAt: new Date(now - 12 * 60_000).toISOString(), devices: devicesOf(['mac-mini']), limits: [] },
+  ];
+  return accounts.filter((account) => account.devices.length > 0);
 }
 
 /** The Query field `agentSessions`: the entries of DAYS split into their sessions (AIS-025, AIS-026). */

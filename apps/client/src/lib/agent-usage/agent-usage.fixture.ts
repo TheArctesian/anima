@@ -1,6 +1,6 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
-import type { DayRow, DeviceRow, ModelRow, RepositoryRow, SessionRow, UsageDevice, UsageSums } from './api';
+import type { AgentAccount, DayRow, DeviceRow, DeviceSourceRow, ModelRow, RepositoryRow, SessionRow, UsageDevice, UsageSums } from './api';
 
 // Test support: an answer in the hub's shape and a hub that gives it, recording what the page asked for.
 
@@ -40,6 +40,8 @@ export interface HubUsage {
   repositoriesLeftOut: number;
   sessions: readonly SessionRow[];
   sessionsLeftOut: number;
+  accounts: readonly AgentAccount[];
+  shares: readonly DeviceSourceRow[];
 }
 
 /** One session of the mac-mini; what `change` leaves out is a Claude Code session of yesterday in acme/anima. */
@@ -99,6 +101,34 @@ export const ANSWER: HubUsage = {
     session({ source: 'CODEX', model: 'gpt-5-codex', repository: 'github.com/acme/blog', estimatedCostUsd: null }),
   ],
   sessionsLeftOut: 0,
+  accounts: [
+    {
+      key: '3f9a12c4'.padEnd(64, '0'),
+      shortKey: '3f9a12c4',
+      source: 'CODEX',
+      plan: 'Pro',
+      reportedAt: '2026-11-17T09:40:00Z',
+      devices: [MAC, BOX].map(({ id, name }) => ({ id, name })),
+      limits: [
+        { window: 'five_hour', usedPercent: 35, resetsAt: '2026-11-17T14:00:00Z', reached: false },
+        { window: 'seven_day', usedPercent: 82, resetsAt: '2026-11-20T09:00:00Z', reached: false },
+      ],
+    },
+    {
+      key: 'a71c0e5b'.padEnd(64, '0'),
+      shortKey: 'a71c0e5b',
+      source: 'CLAUDE_CODE',
+      plan: null,
+      reportedAt: '2026-11-17T09:30:00Z',
+      devices: [{ id: MAC.id, name: MAC.name }],
+      limits: [],
+    },
+  ],
+  shares: [
+    { ...sums({ sessions: 3, estimatedCostUsd: 2 }), device: MAC, source: 'CODEX' },
+    { ...sums({ sessions: 2, estimatedCostUsd: 1.1 }), device: BOX, source: 'CODEX' },
+    { ...sums({ sessions: 12, estimatedCostUsd: 9.3 }), device: MAC, source: 'CLAUDE_CODE' },
+  ],
 };
 
 export interface FakeUsageHub extends Pick<Hub, 'request' | 'subscribe'> {
@@ -130,7 +160,8 @@ export function fakeUsageHub(answer: HubUsage = ANSWER, everyone: readonly Usage
         devices: { rows: now.devices, devices: now.states },
         repositories: { rowsLeftOut: now.repositoriesLeftOut, rows: now.repositories, total: now.everything },
         newest: { rows: now.newest },
-        everyone: { devices: hub.everyone },
+        everyone: { devices: hub.everyone, accounts: now.accounts },
+        shares: { rows: now.shares },
         sessions: { sessionsLeftOut: now.sessionsLeftOut, sessions: now.sessions },
       };
       return Promise.resolve({ ok: true, value } as unknown as HubResult<TResult>);
