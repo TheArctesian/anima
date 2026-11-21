@@ -40,6 +40,7 @@ impl Default for OverheadTable {
 
 impl OverheadTable {
     /// The overhead for a runtime and backend, or the fallback when the pair is not listed.
+    #[must_use]
     pub fn bytes_for(&self, runtime: &str, backend: &str) -> u64 {
         self.entries
             .iter()

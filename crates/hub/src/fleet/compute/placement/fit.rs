@@ -16,6 +16,10 @@ pub struct KvShape {
 
 impl KvShape {
     /// KV bytes for each token: 2 (K and V) × layers × KV heads × head dimension × element bytes.
+    ///
+    /// # Errors
+    ///
+    /// `FitError::Overflow` when the product does not fit in 64 bits.
     pub fn bytes_per_token(&self) -> Result<u64, FitError> {
         [
             self.layers,
@@ -57,6 +61,7 @@ pub enum FitVerdict {
 
 impl FitVerdict {
     /// The reason in words, for the operator.
+    #[must_use]
     pub fn reason(&self, request: &FitRequest) -> String {
         match self {
             Self::Fits { used_bytes } => format!(
@@ -84,6 +89,10 @@ pub enum FitError {
 }
 
 /// Estimate whether a variant fits on a node, and if not, the largest context that fits.
+///
+/// # Errors
+///
+/// `FitError::Overflow` when a memory size does not fit in 64 bits.
 pub fn estimate_fit(request: &FitRequest) -> Result<FitVerdict, FitError> {
     let per_token = request.kv.bytes_per_token()?;
     let fixed = request
